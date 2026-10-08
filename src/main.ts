@@ -20,7 +20,7 @@ const defaultParams: LampParameters = {
   fluteCount: 12,
   fluteDepth: 1.0,
 
-  veinCount: 4,
+  veinCount: 3,
   veinWidth: 10,
   veinSwirl: 0.65,
   waveAmplitude: 2.2,

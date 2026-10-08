@@ -60,16 +60,105 @@ export function setupUI(
     });
   });
 
-  // Mutate Seed Button
+  const syncAllUIInputs = () => {
+    const updateInput = (id: string, val: any, format?: (v: any) => string) => {
+      const el = document.getElementById(id) as HTMLInputElement;
+      const valBadge = document.getElementById(`${id}-val`);
+      if (el) el.value = String(val);
+      if (valBadge && format) valBadge.textContent = format(val);
+    };
+
+    updateInput('param-height', current.height, (v) => `${v} mm`);
+    updateInput('param-base-radius', current.baseRadius, (v) => `${v} mm`);
+    updateInput('param-top-radius', current.topRadius, (v) => `${v} mm`);
+    updateInput('param-waist-ratio', current.waistRatio, (v) => `${v.toFixed(2)}x`);
+    updateInput('param-twist-angle', current.twistAngle, (v) => `${v}°`);
+    updateInput('param-curl-strength', current.curlStrength, (v) => v.toFixed(1));
+    updateInput('param-surface-noise', current.surfaceNoise, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-organic-seed', current.organicSeed, (v) => String(Math.round(v)));
+    updateInput('param-flute-count', current.fluteCount, (v) => `${v} ribs`);
+    updateInput('param-flute-depth', current.fluteDepth, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-vein-count', current.veinCount, (v) => `${v} veins`);
+    updateInput('param-vein-width', current.veinWidth, (v) => `${v} mm`);
+    updateInput('param-vein-swirl', current.veinSwirl, (v) => `${v.toFixed(2)} turns`);
+    updateInput('param-wave-amp', current.waveAmplitude, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-wave-freq', current.waveFrequency, (v) => `${v.toFixed(1)} cyc`);
+
+    growthButtons.forEach((b) => b.classList.toggle('active', b.dataset.growth === current.growthMode));
+  };
+
+  // Sculptural Presets
+  const presetButtons = document.querySelectorAll<HTMLButtonElement>('.preset-btn');
+  presetButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      presetButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const preset = btn.dataset.preset;
+
+      if (preset === 'calla') {
+        current.growthMode = 'organic';
+        current.veinCount = 3;
+        current.baseRadius = 48;
+        current.topRadius = 38;
+        current.waistRatio = 0.78;
+        current.twistAngle = 85;
+        current.curlStrength = 2.4;
+        current.surfaceNoise = 1.6;
+        current.lightColor = '#ff9d3b';
+        current.bodyColor = '#161b22';
+      } else if (preset === 'basalt') {
+        current.growthMode = 'mycelium';
+        current.veinCount = 4;
+        current.baseRadius = 50;
+        current.topRadius = 34;
+        current.waistRatio = 0.88;
+        current.twistAngle = 60;
+        current.curlStrength = 3.2;
+        current.surfaceNoise = 2.4;
+        current.lightColor = '#00f2fe';
+        current.bodyColor = '#0f172a';
+      } else if (preset === 'vortex') {
+        current.growthMode = 'vortex';
+        current.veinCount = 4;
+        current.baseRadius = 46;
+        current.topRadius = 36;
+        current.waistRatio = 0.72;
+        current.twistAngle = 120;
+        current.curlStrength = 3.0;
+        current.surfaceNoise = 1.4;
+        current.lightColor = '#a855f7';
+        current.bodyColor = '#18181b';
+      } else if (preset === 'nordic') {
+        current.growthMode = 'geometric';
+        current.veinCount = 4;
+        current.baseRadius = 46;
+        current.topRadius = 36;
+        current.waistRatio = 0.82;
+        current.twistAngle = 45;
+        current.curlStrength = 0.0;
+        current.surfaceNoise = 0.0;
+        current.fluteCount = 16;
+        current.fluteDepth = 1.8;
+        current.lightColor = '#ffbe76';
+        current.bodyColor = '#2a2d34';
+      }
+
+      syncAllUIInputs();
+      handlers.onParamChange(current);
+      handlers.onLightLiveChange(current.lightColor, current.lightIntensity);
+    });
+  });
+
+  // Mutate Seed & Evolve Button
   const btnMutate = document.getElementById('btn-mutate-seed');
   if (btnMutate) {
     btnMutate.addEventListener('click', () => {
-      const nextSeed = Math.floor(Math.random() * 999) + 1;
-      current.organicSeed = nextSeed;
-      const seedInput = document.getElementById('param-organic-seed') as HTMLInputElement;
-      const seedVal = document.getElementById('param-organic-seed-val');
-      if (seedInput) seedInput.value = String(nextSeed);
-      if (seedVal) seedVal.textContent = String(nextSeed);
+      current.organicSeed = Math.floor(Math.random() * 999) + 1;
+      current.curlStrength = parseFloat((1.4 + Math.random() * 2.4).toFixed(1));
+      current.surfaceNoise = parseFloat((1.2 + Math.random() * 1.6).toFixed(1));
+      current.waistRatio = parseFloat((0.74 + Math.random() * 0.20).toFixed(2));
+      current.twistAngle = Math.round(55 + Math.random() * 65);
+      syncAllUIInputs();
       handlers.onParamChange(current);
     });
   }

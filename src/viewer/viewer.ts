@@ -2,7 +2,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { LampParameters, LampPart } from '../types';
-import { createNoise3D, evalVeinAngle } from '../geometry/organicField';
+import {
+  createNoise3D,
+  evalOrganicCenter,
+  evalOrganicRadius,
+  evalVeinAngle,
+} from '../geometry/organicField';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
 
@@ -127,7 +132,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
-    return toCreasedNormals(geo, (35 * Math.PI) / 180);
+    geo.computeVertexNormals();
+    return toCreasedNormals(geo, (50 * Math.PI) / 180);
   }
 
   // Build physical WS2812B strips & 5050 LEDs in 3D to match physical geometry
@@ -200,15 +206,17 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const u = s / nSegments;
         const z = u * height;
         const rNom = getRNom(u);
-        const rTrack = rNom - 2.0; // Sits on track inside channel
-
         const th = evalVeinAngle(v, veinCount, u, params, noise);
-        const dThHalf = (5.0 / rTrack); // 10mm wide strip = 5mm half-width
+        const rOuterVein = evalOrganicRadius(u, th, rNom, params, noise);
+        const [cx, cy] = evalOrganicCenter(u, params, noise);
+        const rTrack = rOuterVein - (params.diffuserThickness ?? 1.0) - 1.2;
 
-        const xL = rTrack * Math.cos(th - dThHalf);
-        const yL = rTrack * Math.sin(th - dThHalf);
-        const xR = rTrack * Math.cos(th + dThHalf);
-        const yR = rTrack * Math.sin(th + dThHalf);
+        const dThHalf = (5.0 / Math.max(16, rTrack)); // 10mm wide strip = 5mm half-width
+
+        const xL = cx + rTrack * Math.cos(th - dThHalf);
+        const yL = cy + rTrack * Math.sin(th - dThHalf);
+        const xR = cx + rTrack * Math.cos(th + dThHalf);
+        const yR = cy + rTrack * Math.sin(th + dThHalf);
 
         stripVerts.push(xL, yL, z);
         stripVerts.push(xR, yR, z);
@@ -237,18 +245,20 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const u = l / nLeds;
         const z = u * height;
         const rNom = getRNom(u);
-        const rTrack = rNom - 1.8;
         const th = evalVeinAngle(v, veinCount, u, params, noise);
+        const rOuterVein = evalOrganicRadius(u, th, rNom, params, noise);
+        const [cx, cy] = evalOrganicCenter(u, params, noise);
+        const rTrack = rOuterVein - (params.diffuserThickness ?? 1.0) - 1.2;
 
         const ledMesh = new THREE.Mesh(ledBoxGeo, ledBodyMat);
-        ledMesh.position.set(rTrack * Math.cos(th), rTrack * Math.sin(th), z);
+        ledMesh.position.set(cx + rTrack * Math.cos(th), cy + rTrack * Math.sin(th), z);
         ledMesh.rotation.z = th + Math.PI / 2;
         electronicsGroup.add(ledMesh);
 
         const dieMesh = new THREE.Mesh(dieBoxGeo, ledDieMat);
         dieMesh.position.set(
-          (rTrack + 0.6) * Math.cos(th),
-          (rTrack + 0.6) * Math.sin(th),
+          cx + (rTrack + 0.5) * Math.cos(th),
+          cy + (rTrack + 0.5) * Math.sin(th),
           z
         );
         dieMesh.rotation.z = th + Math.PI / 2;
@@ -311,6 +321,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     scene.background = new THREE.Color(isNight ? '#05080e' : '#0d131f');
     studioGroup.visible = !isNight || isCutaway;
     glowGroup.visible = isNight || isCutaway;
+    electronicsGroup.visible = isCutaway;
 
     renderer.clippingPlanes = isCutaway ? [clipPlane] : [];
 
@@ -361,6 +372,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           roughness: 0.3,
           metalness: 0.05,
           side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -1.0,
+          polygonOffsetUnits: -1.0,
         });
       } else {
         mat = new THREE.MeshStandardMaterial({

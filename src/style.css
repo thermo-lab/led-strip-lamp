@@ -196,7 +196,7 @@ input[type="range"] {
   margin-top: 0.25rem;
 }
 
-.relief-btn, .view-mode-btn {
+.relief-btn, .view-mode-btn, .growth-btn, .preset-btn {
   background: #172133;
   border: 1px solid var(--panel-border);
   color: var(--text-muted);
@@ -206,14 +206,18 @@ input[type="range"] {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
-.relief-btn:hover, .view-mode-btn:hover {
+.relief-btn:hover, .view-mode-btn:hover, .growth-btn:hover, .preset-btn:hover {
   background: #1f2c44;
   color: var(--text-main);
 }
 
-.relief-btn.active, .view-mode-btn.active {
+.relief-btn.active, .view-mode-btn.active, .growth-btn.active, .preset-btn.active {
   background: var(--accent-blue);
   color: #fff;
   border-color: var(--accent-blue);
