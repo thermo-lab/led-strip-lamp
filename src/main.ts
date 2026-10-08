@@ -26,11 +26,11 @@ const defaultParams: LampParameters = {
   waveAmplitude: 2.2,
   waveFrequency: 1.5,
   veinRelief: 'flush',
-  diffuserThickness: 1.0,
+  diffuserThickness: 1.8,
 
   lightColor: '#ff9d3b', // Warm amber / candlelight 2400K
   lightIntensity: 1.2,
-  bodyColor: '#161b22',  // Deep matte charcoal/obsidian
+  bodyColor: '#5a6578',  // Medium slate grey
   diffuserColor: '#f8fafc', // Translucent SnapSpeed PLA white
 };
 

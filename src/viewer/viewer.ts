@@ -6,6 +6,7 @@ import {
   createNoise3D,
   evalOrganicCenter,
   evalOrganicRadius,
+  evalStripAngle,
   evalVeinAngle,
 } from '../geometry/organicField';
 
@@ -195,8 +196,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     const noise = createNoise3D(params.organicSeed ?? 42);
 
-    // Build strip segments for each vein
-    const nSegments = 30;
+    // Build strip segments for each vein along the smooth recessed carrier path
+    const nSegments = 32;
     for (let v = 0; v < veinCount; v++) {
       // Generate flexible strip ribbon geometry
       const stripVerts: number[] = [];
@@ -206,17 +207,17 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const u = s / nSegments;
         const z = u * height;
         const rNom = getRNom(u);
-        const th = evalVeinAngle(v, veinCount, u, params, noise);
-        const rOuterVein = evalOrganicRadius(u, th, rNom, params, noise);
+        const rCore = Math.max(22.0, rNom - 9.0);
+        const thStrip = evalStripAngle(v, veinCount, u, params);
         const [cx, cy] = evalOrganicCenter(u, params, noise);
-        const rTrack = rOuterVein - (params.diffuserThickness ?? 1.0) - 1.2;
+        const rTrack = rCore - 0.5; // Seated in recessed track bed
 
-        const dThHalf = (5.0 / Math.max(16, rTrack)); // 10mm wide strip = 5mm half-width
+        const dThHalf = 5.0 / Math.max(16, rTrack); // 10mm wide strip = 5mm half-width
 
-        const xL = cx + rTrack * Math.cos(th - dThHalf);
-        const yL = cy + rTrack * Math.sin(th - dThHalf);
-        const xR = cx + rTrack * Math.cos(th + dThHalf);
-        const yR = cy + rTrack * Math.sin(th + dThHalf);
+        const xL = cx + rTrack * Math.cos(thStrip - dThHalf);
+        const yL = cy + rTrack * Math.sin(thStrip - dThHalf);
+        const xR = cx + rTrack * Math.cos(thStrip + dThHalf);
+        const yR = cy + rTrack * Math.sin(thStrip + dThHalf);
 
         stripVerts.push(xL, yL, z);
         stripVerts.push(xR, yR, z);
@@ -245,23 +246,23 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const u = l / nLeds;
         const z = u * height;
         const rNom = getRNom(u);
-        const th = evalVeinAngle(v, veinCount, u, params, noise);
-        const rOuterVein = evalOrganicRadius(u, th, rNom, params, noise);
+        const rCore = Math.max(22.0, rNom - 9.0);
+        const thStrip = evalStripAngle(v, veinCount, u, params);
         const [cx, cy] = evalOrganicCenter(u, params, noise);
-        const rTrack = rOuterVein - (params.diffuserThickness ?? 1.0) - 1.2;
+        const rTrack = rCore - 0.5;
 
         const ledMesh = new THREE.Mesh(ledBoxGeo, ledBodyMat);
-        ledMesh.position.set(cx + rTrack * Math.cos(th), cy + rTrack * Math.sin(th), z);
-        ledMesh.rotation.z = th + Math.PI / 2;
+        ledMesh.position.set(cx + rTrack * Math.cos(thStrip), cy + rTrack * Math.sin(thStrip), z);
+        ledMesh.rotation.z = thStrip + Math.PI / 2;
         electronicsGroup.add(ledMesh);
 
         const dieMesh = new THREE.Mesh(dieBoxGeo, ledDieMat);
         dieMesh.position.set(
-          cx + (rTrack + 0.5) * Math.cos(th),
-          cy + (rTrack + 0.5) * Math.sin(th),
+          cx + (rTrack + 0.6) * Math.cos(thStrip),
+          cy + (rTrack + 0.6) * Math.sin(thStrip),
           z
         );
-        dieMesh.rotation.z = th + Math.PI / 2;
+        dieMesh.rotation.z = thStrip + Math.PI / 2;
         electronicsGroup.add(dieMesh);
       }
     }
@@ -379,8 +380,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       } else {
         mat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(p.color),
-          roughness: 0.72,
-          metalness: 0.12,
+          roughness: 0.45,
+          metalness: 0.08,
           side: THREE.DoubleSide,
         });
       }

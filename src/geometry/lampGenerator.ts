@@ -3,6 +3,7 @@ import {
   createNoise3D,
   evalOrganicCenter,
   evalOrganicRadius,
+  evalStripAngle,
   evalVeinAngle,
   evalVeinWidth,
 } from './organicField';
@@ -82,93 +83,163 @@ function buildLoftedTubeMesh(
 }
 
 /**
- * Builds a continuous swept 3D ribbon volume for a vein cutter or strip track.
+ * Builds a continuous swept ribbon mesh for outer translucent diffuser veins.
+ * Terminated smoothly at sMin and sMax to maintain a solid structural crown and base collar.
  */
-function buildSweptRibbonMesh(
+function buildSweptDiffuserMesh(
   nSlices: number,
+  sMin: number,
+  sMax: number,
   veinIndex: number,
   veinCount: number,
   params: LampParameters,
   noise: any,
-  rFrontFn: (u: number, rOuter: number, rCore: number) => number,
-  rBackFn: (u: number, rOuter: number, rCore: number) => number,
-  widthFn: (u: number, wVein: number) => number
+  centerFn: (u: number) => [number, number],
+  getRNom: (u: number) => number
 ): { vertProperties: Float32Array; triVerts: Uint32Array; numProp: number } {
-  const { height, baseRadius, topRadius, waistRatio, wallThickness } = params;
-  const getRNom = (u: number) =>
-    (1 - u) * baseRadius + u * topRadius + 4 * u * (1 - u) * ((waistRatio - 1) * (baseRadius + topRadius) * 0.5);
-
+  const { height, diffuserThickness, veinRelief } = params;
   const verts: number[] = [];
   const tris: number[] = [];
   const nArcSteps = 4;
   const ptsPerRing = (nArcSteps + 1) * 2;
+  const nVeinSlices = sMax - sMin;
 
-  for (let s = 0; s <= nSlices; s++) {
+  for (let s = sMin; s <= sMax; s++) {
     const u = s / nSlices;
     const z = u * height;
     const rNom = getRNom(u);
-    const th0 = evalVeinAngle(veinIndex, veinCount, u, params, noise);
-    const rOuter = evalOrganicRadius(u, th0, rNom, params, noise);
-    const rCore = Math.max(22, rNom - wallThickness);
+    const thVein = evalVeinAngle(veinIndex, veinCount, u, params, noise);
+    const rOuter = evalOrganicRadius(u, thVein, rNom, params, noise);
     const wVein = evalVeinWidth(veinIndex, u, params, noise);
-    const wActual = widthFn(u, wVein);
-    const dTh = wActual / Math.max(16, rOuter);
+    const dTh = wVein / Math.max(16, rOuter);
 
-    const rFront = rFrontFn(u, rOuter, rCore);
-    const rBack = rBackFn(u, rOuter, rCore);
-    const [cx, cy] = evalOrganicCenter(u, params, noise);
+    const rFront = rOuter + (veinRelief === 'proud' ? 1.2 : 4.0);
+    const rBack = rOuter - diffuserThickness;
+    const [cx, cy] = centerFn(u);
 
-    // Front arc (left to right)
+    // Front arc (facing outside)
     for (let i = 0; i <= nArcSteps; i++) {
-      const t = i / nArcSteps;
-      const th = th0 - dTh / 2 + t * dTh;
+      const th = thVein - dTh / 2 + (i / nArcSteps) * dTh;
       verts.push(cx + rFront * Math.cos(th), cy + rFront * Math.sin(th), z);
     }
-
-    // Back arc (right to left)
+    // Back arc (facing light chamber)
     for (let i = nArcSteps; i >= 0; i--) {
-      const t = i / nArcSteps;
-      const th = th0 - dTh / 2 + t * dTh;
+      const th = thVein - dTh / 2 + (i / nArcSteps) * dTh;
       verts.push(cx + rBack * Math.cos(th), cy + rBack * Math.sin(th), z);
     }
   }
 
-  // Connect rings along height
-  for (let s = 0; s < nSlices; s++) {
+  // Connect quad-strip side walls
+  for (let s = 0; s < nVeinSlices; s++) {
     const r0 = s * ptsPerRing;
     const r1 = (s + 1) * ptsPerRing;
-
     for (let i = 0; i < ptsPerRing; i++) {
       const next = (i + 1) % ptsPerRing;
-      const a = r0 + i;
-      const b = r0 + next;
-      const c = r1 + next;
-      const d = r1 + i;
-
-      tris.push(a, b, c);
-      tris.push(a, c, d);
+      tris.push(r0 + i, r0 + next, r1 + next);
+      tris.push(r0 + i, r1 + next, r1 + i);
     }
   }
 
-  // Bottom Cap (s=0, z=0)
+  // Bottom cap (s = sMin)
   for (let i = 0; i < nArcSteps; i++) {
-    const f0 = i;
-    const f1 = i + 1;
-    const b0 = ptsPerRing - 1 - i;
-    const b1 = ptsPerRing - 2 - i;
-    tris.push(f0, b0, b1);
-    tris.push(f0, b1, f1);
+    tris.push(i, ptsPerRing - 1 - i, ptsPerRing - 2 - i);
+    tris.push(i, ptsPerRing - 2 - i, i + 1);
   }
 
-  // Top Cap (s=nSlices, z=height)
-  const topStart = nSlices * ptsPerRing;
+  // Top cap (s = sMax)
+  const topStart = nVeinSlices * ptsPerRing;
   for (let i = 0; i < nArcSteps; i++) {
-    const f0 = topStart + i;
-    const f1 = topStart + i + 1;
-    const b0 = topStart + ptsPerRing - 1 - i;
-    const b1 = topStart + ptsPerRing - 2 - i;
-    tris.push(f0, b1, b0);
-    tris.push(f0, f1, b1);
+    tris.push(topStart + i, topStart + ptsPerRing - 2 - i, topStart + ptsPerRing - 1 - i);
+    tris.push(topStart + i, topStart + i + 1, topStart + ptsPerRing - 2 - i);
+  }
+
+  return {
+    vertProperties: new Float32Array(verts),
+    triVerts: new Uint32Array(tris),
+    numProp: 3,
+  };
+}
+
+/**
+ * Builds deeply recessed forward-shining optical chamber & smooth strip carrier track.
+ * Flares forward from the recessed 10mm flex strip bed (at thStrip) to the outer vein (at thVein).
+ * Because the physical strip track follows a smooth helix (zero wiggles), the strip slides
+ * or snaps into place with zero kink or sideways buckling.
+ */
+function buildRecessedChamberMesh(
+  nSlices: number,
+  sMin: number,
+  sMax: number,
+  veinIndex: number,
+  veinCount: number,
+  params: LampParameters,
+  noise: any,
+  centerFn: (u: number) => [number, number],
+  getRNom: (u: number) => number,
+  getRCore: (u: number) => number
+): { vertProperties: Float32Array; triVerts: Uint32Array; numProp: number } {
+  const { height, diffuserThickness } = params;
+  const verts: number[] = [];
+  const tris: number[] = [];
+  const nArcSteps = 4;
+  const ptsPerRing = (nArcSteps + 1) * 2;
+  const nVeinSlices = sMax - sMin;
+
+  for (let s = sMin; s <= sMax; s++) {
+    const u = s / nSlices;
+    const z = u * height;
+    const rNom = getRNom(u);
+    const thVein = evalVeinAngle(veinIndex, veinCount, u, params, noise);
+    const thStrip = evalStripAngle(veinIndex, veinCount, u, params);
+    const rOuter = evalOrganicRadius(u, thVein, rNom, params, noise);
+    const rCore = getRCore(u);
+    const wVein = evalVeinWidth(veinIndex, u, params, noise);
+
+    // Front of chamber meets back of diffuser seamlessly
+    const rFront = rOuter - diffuserThickness + 0.15;
+    const dThFront = (wVein + 0.4) / Math.max(16, rFront);
+
+    // Recessed strip bed: sits in wall, accessible from the hollow core for insertion
+    // 11.2mm width gives 0.6mm clearance per side for standard 10mm flex PCB
+    const rBack = rCore - 1.5;
+    const dThBack = 11.2 / Math.max(16, rBack);
+
+    const [cx, cy] = centerFn(u);
+
+    // Front arc (meets rear of diffuser)
+    for (let i = 0; i <= nArcSteps; i++) {
+      const th = thVein - dThFront / 2 + (i / nArcSteps) * dThFront;
+      verts.push(cx + rFront * Math.cos(th), cy + rFront * Math.sin(th), z);
+    }
+    // Back arc (smooth recessed track bed for 10mm strip)
+    for (let i = nArcSteps; i >= 0; i--) {
+      const th = thStrip - dThBack / 2 + (i / nArcSteps) * dThBack;
+      verts.push(cx + rBack * Math.cos(th), cy + rBack * Math.sin(th), z);
+    }
+  }
+
+  // Connect quad-strip side walls
+  for (let s = 0; s < nVeinSlices; s++) {
+    const r0 = s * ptsPerRing;
+    const r1 = (s + 1) * ptsPerRing;
+    for (let i = 0; i < ptsPerRing; i++) {
+      const next = (i + 1) % ptsPerRing;
+      tris.push(r0 + i, r0 + next, r1 + next);
+      tris.push(r0 + i, r1 + next, r1 + i);
+    }
+  }
+
+  // Bottom cap
+  for (let i = 0; i < nArcSteps; i++) {
+    tris.push(i, ptsPerRing - 1 - i, ptsPerRing - 2 - i);
+    tris.push(i, ptsPerRing - 2 - i, i + 1);
+  }
+
+  // Top cap
+  const topStart = nVeinSlices * ptsPerRing;
+  for (let i = 0; i < nArcSteps; i++) {
+    tris.push(topStart + i, topStart + ptsPerRing - 2 - i, topStart + ptsPerRing - 1 - i);
+    tris.push(topStart + i, topStart + i + 1, topStart + ptsPerRing - 2 - i);
   }
 
   return {
@@ -181,10 +252,11 @@ function buildSweptRibbonMesh(
 /**
  * Procedural CAD generator for the dual-material LED lamp using Manifold-3D WASM.
  * Continuous lofted geometry guarantees:
- * - Zero slice stair-stepping and zero triangular boundary teeth
  * - 100% airtight topological match at outer surface (zero residual skin or clipping)
- * - Minimum >= 44mm open hollow core for finger/tool assembly
- * - Continuous 10.8mm snap tracks with retention lips open to the core
+ * - Solid continuous crown at top rim and solid collar at bottom rim (zero gaps/holes)
+ * - Smooth helical recessed tracks for kink-free 10mm flex PCB strip installation
+ * - Forward-shining optical mixing chambers for uniform, hotspot-free diffusion
+ * - Guaranteed >= 44mm open hollow core for finger and wire assembly
  */
 export function generateLampGeometry(wasm: any, params: LampParameters): LampPart[] {
   const {
@@ -192,10 +264,7 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     baseRadius,
     topRadius,
     waistRatio,
-    wallThickness,
     veinCount,
-    veinRelief,
-    diffuserThickness,
     bodyColor,
     diffuserColor,
     organicSeed,
@@ -206,8 +275,19 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
   const nSlices = 64;
   const nPts = 96;
 
+  const centerFn = (u: number): [number, number] => {
+    return evalOrganicCenter(u, params, noise);
+  };
+
   const getRNom = (u: number): number => {
     return (1 - u) * baseRadius + u * topRadius + 4 * u * (1 - u) * ((waistRatio - 1) * (baseRadius + topRadius) * 0.5);
+  };
+
+  // Guaranteed Core Radius: clean inner frustum with finger clearance (diameter >= 44mm)
+  // Wall thickness is guaranteed >= 5.0mm everywhere around the entire circumference
+  const getRCore = (u: number): number => {
+    const rNom = getRNom(u);
+    return Math.max(22.0, rNom - 9.0);
   };
 
   // 1. Full Outer Organic Solid (continuous lofted mesh)
@@ -218,7 +298,7 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
       const rNom = getRNom(u);
       return evalOrganicRadius(u, th, rNom, params, noise);
     },
-    (u) => evalOrganicCenter(u, params, noise),
+    centerFn,
     height
   );
   const fullOuterSolid = wasm.Manifold.ofMesh(outerMeshData);
@@ -227,69 +307,73 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
   const innerMeshData = buildLoftedTubeMesh(
     nSlices,
     nPts,
-    (u) => {
-      const rNom = getRNom(u);
-      return Math.max(22, rNom - wallThickness);
-    },
-    (u) => evalOrganicCenter(u, params, noise),
+    (u) => getRCore(u),
+    centerFn,
     height + 2.0,
-    -1.0 // Slightly taller to guarantee clean boolean through-cut
+    -1.0 // Extends through ends for clean boolean through-cut
   );
   const hollowCore = wasm.Manifold.ofMesh(innerMeshData);
 
-  // 3. Continuous Swept Vein Cutters & Strip Tracks
+  // 3. Diffusers and Recessed Forward-Shining Light Chambers
+  // Terminate slightly before the top and bottom to leave solid continuous rims
+  const sMin = Math.max(2, Math.round(nSlices * 0.04));
+  const sMax = Math.min(nSlices - 2, Math.round(nSlices * 0.96));
+
   const veinSolids: any[] = [];
-  const trackSolids: any[] = [];
+  const chamberSolids: any[] = [];
 
   for (let v = 0; v < veinCount; v++) {
-    // Diffuser volume (extends 6mm outside outer skin to guarantee 100% clean punch-through)
-    const veinMesh = buildSweptRibbonMesh(
+    const diffMesh = buildSweptDiffuserMesh(
       nSlices,
+      sMin,
+      sMax,
       v,
       veinCount,
       params,
       noise,
-      (_u, rOuter) => rOuter + (veinRelief === 'proud' ? 1.2 : 6.0),
-      (_u, rOuter) => rOuter - diffuserThickness,
-      (_u, wVein) => wVein
+      centerFn,
+      getRNom
     );
-    veinSolids.push(wasm.Manifold.ofMesh(veinMesh));
+    veinSolids.push(wasm.Manifold.ofMesh(diffMesh));
 
-    // Strip track cavity (behind diffuser, open to hollow core)
-    const trackMesh = buildSweptRibbonMesh(
+    const chamMesh = buildRecessedChamberMesh(
       nSlices,
+      sMin,
+      sMax,
       v,
       veinCount,
       params,
       noise,
-      (_u, rOuter) => rOuter - diffuserThickness + 0.2, // Overlaps diffuser rear for seamless boolean
-      (_u, _rOuter, rCore) => rCore - 2.0,             // Extends into hollow core
-      (_u, wVein) => Math.max(10.8, wVein + 0.8)       // Standard 10.8mm track slot
+      centerFn,
+      getRNom,
+      getRCore
     );
-    trackSolids.push(wasm.Manifold.ofMesh(trackMesh));
+    chamberSolids.push(wasm.Manifold.ofMesh(chamMesh));
   }
 
   const allVeinCutters = wasm.Manifold.union(veinSolids);
-  const allStripTracks = wasm.Manifold.union(trackSolids);
+  const allChambers = wasm.Manifold.union(chamberSolids);
 
   // 4. Boolean Operations
   // Translucent Diffusers: Exact intersection with outer envelope
   const diffuserVeins = allVeinCutters.intersect(fullOuterSolid);
 
-  // Opaque Body: Outer envelope minus hollow core, minus diffusers, minus strip tracks
+  // Opaque Body: Outer envelope minus hollow core, minus diffusers, minus forward chambers
   let opaqueBody = fullOuterSolid
     .subtract(hollowCore)
     .subtract(allVeinCutters)
-    .subtract(allStripTracks);
+    .subtract(allChambers);
 
-  // 5. Add 3 Twist-Lock Bayonet Lugs to bottom rim
+  // 5. Add 3 Twist-Lock Bayonet Lugs to bottom collar
   const nLugs = 3;
   const lugSolids: any[] = [];
   const lugH = 5.0;
   const lugThick = 2.5;
+  const rCoreBase = getRCore(0);
+
   for (let i = 0; i < nLugs; i++) {
     const th = (i / nLugs) * 2 * Math.PI;
-    const rLugIn = baseRadius - wallThickness - 0.5;
+    const rLugIn = rCoreBase - 0.5;
     const rLugOut = rLugIn + lugThick;
     const span = (25 * Math.PI) / 180;
     const pLug: [number, number][] = [

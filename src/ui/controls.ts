@@ -105,7 +105,7 @@ export function setupUI(
         current.curlStrength = 2.4;
         current.surfaceNoise = 1.6;
         current.lightColor = '#ff9d3b';
-        current.bodyColor = '#161b22';
+        current.bodyColor = '#5a6578';
       } else if (preset === 'basalt') {
         current.growthMode = 'mycelium';
         current.veinCount = 4;
@@ -116,7 +116,7 @@ export function setupUI(
         current.curlStrength = 3.2;
         current.surfaceNoise = 2.4;
         current.lightColor = '#00f2fe';
-        current.bodyColor = '#0f172a';
+        current.bodyColor = '#475569';
       } else if (preset === 'vortex') {
         current.growthMode = 'vortex';
         current.veinCount = 4;
@@ -127,7 +127,7 @@ export function setupUI(
         current.curlStrength = 3.0;
         current.surfaceNoise = 1.4;
         current.lightColor = '#a855f7';
-        current.bodyColor = '#18181b';
+        current.bodyColor = '#64748b';
       } else if (preset === 'nordic') {
         current.growthMode = 'geometric';
         current.veinCount = 4;
@@ -140,7 +140,7 @@ export function setupUI(
         current.fluteCount = 16;
         current.fluteDepth = 1.8;
         current.lightColor = '#ffbe76';
-        current.bodyColor = '#2a2d34';
+        current.bodyColor = '#52525b';
       }
 
       syncAllUIInputs();

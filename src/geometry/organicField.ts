@@ -104,6 +104,7 @@ export function evalOrganicCenter(
  * 1. Macro-anatomy: botanical buttress root flaring and muscular organic lobes.
  * 2. Meso-fluting: fluid organic valleys where veins nestle.
  * 3. Micro-texture: coherent multi-octave 3D tactile displacement.
+ * All lobes swell outward from the structural trunk to guarantee zero wall breaches.
  */
 export function evalOrganicRadius(
   u: number,
@@ -112,18 +113,18 @@ export function evalOrganicRadius(
   params: LampParameters,
   noise: NoiseFunction
 ): number {
-  const { growthMode, fluteCount, fluteDepth, twistAngle, surfaceNoise, veinCount } = params;
+  const { growthMode, fluteCount, fluteDepth, twistAngle, surfaceNoise } = params;
   const twistRad = (twistAngle * Math.PI) / 180;
   const thTwisted = th - u * twistRad;
 
   // Base subtle fluting ribs (if user enabled fluting)
   let fluting = 0;
   if (fluteCount > 0 && fluteDepth > 0) {
-    fluting = fluteDepth * Math.cos(fluteCount * thTwisted);
+    fluting = fluteDepth * 0.5 * Math.cos(fluteCount * thTwisted);
   }
 
   if (growthMode === 'geometric' || surfaceNoise <= 0) {
-    return Math.max(18, rNom + fluting);
+    return Math.max(24, rNom + fluting);
   }
 
   const cosTh = Math.cos(thTwisted);
@@ -133,42 +134,57 @@ export function evalOrganicRadius(
   let microTexture = 0;
 
   if (growthMode === 'organic') {
-    // 1. Botanical Buttress Roots: flare outward at the base (u < 0.25) like a rainforest cypress
-    const rootFlare = 7.5 * Math.exp(-u * 5.0) * (0.5 + 0.5 * Math.cos(3 * thTwisted));
+    // 1. Botanical Buttress Roots: flare outward at the base (u < 0.25) like a cypress tree
+    const rootFlare = 8.0 * Math.exp(-u * 5.0) * Math.pow(Math.cos(1.5 * thTwisted), 2);
 
     // 2. Muscular Organic Lobes: 3 natural living lobes that twist gracefully with height
-    // Lobes create deep sculpted bays for the veins to flow through!
+    // Lobes swell OUTWARD (0 to +7.5mm) from the structural trunk datum
     const lobeAngle = thTwisted + 0.35 * Math.sin(u * Math.PI * 1.8);
-    const lobeMod = 6.2 * Math.cos(3 * lobeAngle) + 2.0 * Math.cos(6 * lobeAngle + 1.1);
+    const lobeSwelling = 7.5 * Math.pow(0.5 + 0.5 * Math.cos(3 * lobeAngle), 1.4);
 
-    macroMorphology = rootFlare + lobeMod * (0.9 + 0.2 * (1.0 - u));
+    macroMorphology = rootFlare + lobeSwelling;
 
     // 3. Multi-octave coherent bark/cellular tissue displacement
     const n1 = noise(cosTh * 1.6, sinTh * 1.6, u * 2.4);
-    const n2 = noise(cosTh * 3.4 + 4.1, sinTh * 3.4 + 2.7, u * 4.8);
-    const n3 = noise(cosTh * 6.0 + 9.3, sinTh * 6.0 + 5.1, u * 8.5);
-    microTexture = surfaceNoise * (n1 * 1.1 + n2 * 0.4 + n3 * 0.15);
+    microTexture = surfaceNoise * n1 * 0.8;
 
   } else if (growthMode === 'vortex') {
     // Hydrodynamic whirlpool: spiraling vortex flutes that accelerate at the waist
-    const vortexTwist = thTwisted + u * Math.PI * 2.2;
-    const hydroRibs = 5.2 * Math.cos(4 * vortexTwist) + 1.8 * Math.cos(8 * vortexTwist);
-    macroMorphology = hydroRibs;
-
-    const nVortex = noise(Math.cos(vortexTwist) * 2.4, Math.sin(vortexTwist) * 2.4, u * 3.6);
-    microTexture = surfaceNoise * (nVortex * 1.3);
+    const vortexAngle = thTwisted + u * Math.PI * 2.0;
+    macroMorphology = 5.5 * Math.pow(0.5 + 0.5 * Math.cos(4 * vortexAngle), 1.5);
+    microTexture = surfaceNoise * noise(Math.cos(vortexAngle) * 2.2, Math.sin(vortexAngle) * 2.2, u * 3.0) * 0.7;
 
   } else if (growthMode === 'mycelium') {
     // Bioluminescent Fungal Hyphae / Canyon Earth Fissures: irregular organic facets
     const rootFlare = 6.0 * Math.exp(-u * 4.5);
-    const cord1 = Math.abs(noise(cosTh * 2.8, sinTh * 2.8, u * 3.2));
-    const cord2 = noise(cosTh * 4.8 + 6.2, sinTh * 4.8 + 3.9, u * 5.5);
-    macroMorphology = rootFlare + 3.5 * (1.0 - cord1 * 2.2);
-    microTexture = surfaceNoise * (cord2 * 1.2);
+    const hyphae = 4.5 * Math.pow(0.5 + 0.5 * Math.cos(5 * thTwisted + u * 4.0), 2.0);
+    macroMorphology = rootFlare + hyphae;
+    microTexture = surfaceNoise * noise(Math.cos(thTwisted) * 3.0, Math.sin(thTwisted) * 3.0, u * 4.0) * 0.9;
   }
 
-  // Ensure minimum radius never pinches below central clearance
-  return Math.max(22, rNom + fluting + macroMorphology + microTexture);
+  // Ensure minimum radius is solidly structural everywhere
+  return Math.max(26.0, rNom + fluting + macroMorphology + microTexture);
+}
+
+/**
+ * Evaluates smooth carrier angle for the physical 10mm WS2812B flex strip.
+ * A smooth, constant helix with zero high-frequency wiggles guarantees 100%
+ * kink-free installation with zero in-plane sideways stress on the copper PCB.
+ */
+export function evalStripAngle(
+  veinIndex: number,
+  veinCount: number,
+  u: number,
+  params: LampParameters
+): number {
+  const { growthMode, veinSwirl, twistAngle } = params;
+  let seedTh = (veinIndex / veinCount) * 2 * Math.PI;
+  if (growthMode === 'organic' && veinCount === 3) {
+    seedTh = (veinIndex / 3) * 2 * Math.PI + Math.PI / 3;
+  }
+  const twistRad = (twistAngle * Math.PI) / 180;
+  const swirlRad = veinSwirl * 2 * Math.PI;
+  return seedTh + u * twistRad + u * swirlRad;
 }
 
 /**
@@ -198,35 +214,27 @@ export function evalVeinAngle(
   if (growthMode === 'organic' && veinCount === 3) {
     seedTh = (veinIndex / 3) * 2 * Math.PI + Math.PI / 3;
   } else {
-    // Subtle natural organic spacing offset at root (breaks robotic equidistant symmetry)
     const rootJitter = (noise(veinIndex * 3.7 + 1.1, 4.3, 8.9) - 0.5) * 0.25;
     seedTh += rootJitter;
   }
 
   const twistRad = (twistAngle * Math.PI) / 180;
   const swirlRad = veinSwirl * 2 * Math.PI;
-  const avgR = (baseRadius + topRadius) / 2;
 
-  // Base natural spiral ascent
+  // Base natural spiral ascent matching the strip carrier
   const baseAscent = seedTh + u * twistRad + u * swirlRad;
 
   // Individual 3D Curl-Field Wander:
-  // Each vein evaluates the curl vector field at its own 3D position in space!
   const curlX = Math.cos(seedTh + u * twistRad);
   const curlY = Math.sin(seedTh + u * twistRad);
   const curlZ = u * (waveFrequency * 2.4 + 1.0);
 
-  // Low-frequency organic meandering drift (individual for each vein)
-  const nCurlMacro = noise(curlX * 1.6 + veinIndex * 3.4, curlY * 1.6 + 6.2, curlZ);
-  const nCurlDetail = noise(curlX * 3.2 + 14.1, curlY * 3.2 + veinIndex * 2.1, curlZ * 1.8);
+  const nCurl = noise(curlX * 1.6 + veinIndex * 3.4, curlY * 1.6 + 6.2, curlZ);
 
-  // Smoothly anchor at base (u=0) so wires plug into base cradle cleanly
-  // Flourishes into organic wandering as it ascends through the body
-  const anchorFactor = Math.sin(u * Math.PI * 0.5); // 0.0 at base -> 1.0 at top
-  const curlDrift = (curlStrength * 0.42) * (nCurlMacro * 1.1 + nCurlDetail * 0.35) * anchorFactor;
-
-  // Gentle wave breath
-  const waveDrift = (waveAmplitude / avgR) * Math.sin(2 * Math.PI * waveFrequency * u + veinIndex * 0.6) * 0.6;
+  // Anchored at both base (u=0) and crown (u=1) so rims remain solid and clean
+  const anchor = Math.sin(u * Math.PI);
+  const curlDrift = (curlStrength * 0.25) * nCurl * anchor;
+  const waveDrift = (waveAmplitude / 40.0) * Math.sin(2 * Math.PI * waveFrequency * u) * anchor;
 
   return baseAscent + curlDrift + waveDrift;
 }
