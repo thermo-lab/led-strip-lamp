@@ -138,6 +138,41 @@ export function setupUI(
     resetCamBtn.addEventListener('click', handlers.onResetCamera);
   }
 
+  // Mobile Sidebar Collapse / Expand Handlers
+  const sidebar = document.getElementById('sidebar-panel');
+  const btnCloseSidebar = document.getElementById('btn-close-sidebar');
+  const btnFloatingControls = document.getElementById('btn-floating-controls');
+  const btnHeaderToggle = document.getElementById('btn-header-toggle');
+
+  const setSidebarCollapsed = (collapsed: boolean) => {
+    if (!sidebar) return;
+    if (collapsed) {
+      sidebar.classList.add('collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+    }
+    // Trigger canvas resize so Three.js camera/renderer fills available space
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 320);
+  };
+
+  if (btnCloseSidebar) {
+    btnCloseSidebar.addEventListener('click', () => setSidebarCollapsed(true));
+  }
+
+  if (btnFloatingControls) {
+    btnFloatingControls.addEventListener('click', () => setSidebarCollapsed(false));
+  }
+
+  if (btnHeaderToggle) {
+    btnHeaderToggle.addEventListener('click', () => {
+      if (!sidebar) return;
+      const isCollapsed = sidebar.classList.contains('collapsed');
+      setSidebarCollapsed(!isCollapsed);
+    });
+  }
+
   // Export Buttons
   const export3mfBtn = document.getElementById('btn-export-3mf');
   if (export3mfBtn) {

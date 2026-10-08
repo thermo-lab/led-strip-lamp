@@ -418,3 +418,171 @@ input[type="color"] {
   color: var(--text-muted);
   pointer-events: none;
 }
+
+/* Sidebar Header Bar */
+.sidebar-header-bar {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.65rem 1rem 0.45rem 1rem;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.grab-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--text-dim);
+  border-radius: 9999px;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-header-content {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-header-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.btn-minimize-controls {
+  background: #172133;
+  color: var(--accent-cyan);
+  border: 1px solid var(--panel-border);
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.btn-minimize-controls:hover {
+  background: #1f2c44;
+}
+
+/* Header Toggle Button */
+.header-toggle-btn {
+  display: none;
+  background: #172133;
+  border: 1px solid var(--panel-border);
+  color: var(--text-main);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Floating Controls Button (Desktop: hidden) */
+.floating-controls-btn {
+  display: none;
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 20;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.45);
+  align-items: center;
+  gap: 0.5rem;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.floating-controls-btn:hover {
+  transform: scale(1.04);
+}
+
+/* Mobile & Tablet Responsive Layout */
+@media (max-width: 860px) {
+  .header-toggle-btn {
+    display: flex;
+    align-items: center;
+  }
+
+  .sidebar-header-bar {
+    display: flex;
+  }
+
+  .app-container {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  .viewport-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1;
+  }
+
+  .sidebar-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100% !important;
+    max-height: 72vh;
+    z-index: 30;
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--panel-border);
+    border-right: none;
+    box-shadow: 0 -10px 32px rgba(0, 0, 0, 0.75);
+    background: rgba(14, 20, 32, 0.96);
+    backdrop-filter: blur(16px);
+    transform: translateY(0);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sidebar-panel.collapsed {
+    transform: translateY(105%);
+    pointer-events: none;
+  }
+
+  .floating-controls-btn {
+    display: flex;
+  }
+
+  .viewport-overlay-top {
+    max-width: 92vw;
+    overflow-x: auto;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.4rem;
+  }
+
+  .view-mode-btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .assembly-info-pill {
+    display: none;
+  }
+
+  .cutaway-panel {
+    bottom: 4.5rem;
+    width: 85vw;
+  }
+}
+
