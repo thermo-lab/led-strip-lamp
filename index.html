@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LED Strip Lamp Designer • Multi-Material Studio</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-icon"></div>
+      <span>LED Strip Lamp Designer</span>
+      <span class="sub">Multi-Material 3MF</span>
+    </div>
+    <div class="header-status">
+      <div id="generation-status" class="status-badge ready">Ready</div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- Sidebar Controls -->
+    <aside class="sidebar-panel">
+      <div class="sidebar-content">
+
+        <!-- 1. Lamp Silhouette & Dimensions -->
+        <section class="control-section">
+          <div class="section-title">Silhouette & Form</div>
+          <div class="control-group">
+            <div class="control-label"><span>Height</span><span id="param-height-val" class="control-val">175 mm</span></div>
+            <input type="range" id="param-height" min="120" max="240" step="5" value="175" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Base Radius</span><span id="param-base-radius-val" class="control-val">48 mm</span></div>
+            <input type="range" id="param-base-radius" min="36" max="65" step="1" value="48" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Top Radius</span><span id="param-top-radius-val" class="control-val">36 mm</span></div>
+            <input type="range" id="param-top-radius" min="25" max="55" step="1" value="36" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Waist Curve</span><span id="param-waist-ratio-val" class="control-val">0.82x</span></div>
+            <input type="range" id="param-waist-ratio" min="0.65" max="1.35" step="0.02" value="0.82" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Torsion Twist</span><span id="param-twist-angle-val" class="control-val">75°</span></div>
+            <input type="range" id="param-twist-angle" min="-180" max="180" step="5" value="75" />
+          </div>
+        </section>
+
+        <!-- 2. Surface Texture & Fluting -->
+        <section class="control-section">
+          <div class="section-title">Surface Texture</div>
+          <div class="control-group">
+            <div class="control-label"><span>Fluting Ribs</span><span id="param-flute-count-val" class="control-val">16 ribs</span></div>
+            <input type="range" id="param-flute-count" min="0" max="32" step="2" value="16" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Flute Depth</span><span id="param-flute-depth-val" class="control-val">1.6 mm</span></div>
+            <input type="range" id="param-flute-depth" min="0" max="3.5" step="0.1" value="1.6" />
+          </div>
+        </section>
+
+        <!-- 3. Light-Emitting Veins -->
+        <section class="control-section">
+          <div class="section-title">Light-Emitting Veins</div>
+          <div class="control-group">
+            <div class="control-label"><span>Vein Count</span><span id="param-vein-count-val" class="control-val">4 veins</span></div>
+            <input type="range" id="param-vein-count" min="2" max="8" step="1" value="4" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Vein Width</span><span id="param-vein-width-val" class="control-val">10 mm</span></div>
+            <input type="range" id="param-vein-width" min="6" max="14" step="1" value="10" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Helical Swirl</span><span id="param-vein-swirl-val" class="control-val">0.65 turns</span></div>
+            <input type="range" id="param-vein-swirl" min="0.2" max="1.5" step="0.05" value="0.65" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Wave Meander Amp</span><span id="param-wave-amp-val" class="control-val">2.2 mm</span></div>
+            <input type="range" id="param-wave-amp" min="0" max="6.0" step="0.2" value="2.2" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Wave Frequency</span><span id="param-wave-freq-val" class="control-val">1.5 cyc</span></div>
+            <input type="range" id="param-wave-freq" min="0.5" max="3.0" step="0.1" value="1.5" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Surface Profile</span></div>
+            <div class="button-group">
+              <button class="relief-btn active" data-relief="flush">Flush</button>
+              <button class="relief-btn" data-relief="recessed">Recessed</button>
+              <button class="relief-btn" data-relief="proud">Proud</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Lighting & Filament Colors -->
+        <section class="control-section">
+          <div class="section-title">Illumination & Materials</div>
+          <div class="control-group">
+            <div class="control-label"><span>Light Color & Preset</span></div>
+            <div class="color-picker-row">
+              <input type="color" id="param-light-color" value="#ff9d3b" />
+              <div class="color-swatches">
+                <button class="color-swatch" style="background: #ff9d3b" data-color="#ff9d3b" title="Candlelight 2400K"></button>
+                <button class="color-swatch" style="background: #ffbe76" data-color="#ffbe76" title="Warm White 3000K"></button>
+                <button class="color-swatch" style="background: #00d2d3" data-color="#00d2d3" title="Ice Cyan"></button>
+                <button class="color-swatch" style="background: #5f27cd" data-color="#5f27cd" title="Deep Indigo"></button>
+                <button class="color-swatch" style="background: #ff6b6b" data-color="#ff6b6b" title="Coral Sunset"></button>
+              </div>
+            </div>
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Brightness Intensity</span></div>
+            <input type="range" id="param-light-intensity" min="0" max="2.0" step="0.1" value="1.2" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Shell Filament Color</span></div>
+            <div class="color-picker-row">
+              <input type="color" id="param-body-color" value="#161b22" />
+              <span style="font-size: 0.75rem; color: var(--text-muted)">Dark Matte PLA (Opaque)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. Assembly & Print Metrics HUD -->
+        <section class="control-section">
+          <div class="section-title">Assembly & Fabrication</div>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <div class="metric-label">WS2812B Strip</div>
+              <div id="metric-leds" class="metric-data">44 LEDs (4×11)</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Total Cut Length</div>
+              <div id="metric-length" class="metric-data">733 mm</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">USB Power Draw</div>
+              <div id="metric-power" class="metric-data">0.88A / 4.4W</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Core Clearance ID</div>
+              <div id="metric-bore" class="metric-data">64 mm ID</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Max Wall Slope</div>
+              <div id="metric-overhang" class="metric-data">32°</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Electronics Pocket</div>
+              <div class="metric-data">ESP32-C6 USB-C</div>
+            </div>
+          </div>
+          <ul id="metrics-warnings" class="metrics-warnings-list">
+            <li class="warning-ok">✓ 100% Assemblable & Print-Ready</li>
+          </ul>
+        </section>
+
+        <!-- 6. Print Export Actions -->
+        <section class="control-section">
+          <div class="section-title">CAD Export</div>
+          <div class="export-actions">
+            <button id="btn-export-3mf" class="btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Multi-Material 3MF
+            </button>
+            <div class="stl-export-row">
+              <button id="btn-export-stl-body" class="btn-secondary" title="Export Dark Shade STL">Body STL</button>
+              <button id="btn-export-stl-veins" class="btn-secondary" title="Export Translucent Veins STL">Veins STL</button>
+              <button id="btn-export-stl-base" class="btn-secondary" title="Export Base Cradle STL">Base STL</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </aside>
+
+    <!-- 3D Viewport -->
+    <main class="viewport-panel">
+      <!-- Top View Mode Floating Bar -->
+      <div class="viewport-overlay-top">
+        <button class="view-mode-btn active" data-mode="night">Night Glow (Lit)</button>
+        <button class="view-mode-btn" data-mode="day">Studio Day</button>
+        <button class="view-mode-btn" data-mode="cutaway">Inspect Assembly</button>
+      </div>
+
+      <div class="viewport-overlay-right">
+        <button id="btn-reset-cam" class="view-mode-btn" title="Reset Viewpoint">Reset Camera</button>
+      </div>
+
+      <!-- Cutaway Slider (Shows internal core and strip tracks) -->
+      <div id="cutaway-slider-container" class="cutaway-panel">
+        <span>Cutaway Slice:</span>
+        <input type="range" id="cutaway-slider" min="0" max="1" step="0.01" value="0.5" />
+      </div>
+
+      <div class="assembly-info-pill">
+        Hardware: WS2812B 60/m (10mm) • ESP32-C6 SuperMini Type-C
+      </div>
+
+      <!-- 3D Canvas -->
+      <div id="viewport-canvas"></div>
+    </main>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
