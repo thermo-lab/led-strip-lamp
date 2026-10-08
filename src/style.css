@@ -22,6 +22,7 @@ body {
   background: var(--bg-dark);
   color: var(--text-main);
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -106,6 +107,7 @@ header {
   display: flex;
   flex: 1;
   height: calc(100vh - 52px);
+  height: calc(100dvh - 52px);
   position: relative;
 }
 
@@ -117,11 +119,15 @@ header {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   z-index: 5;
 }
 
 .sidebar-content {
   padding: 1.2rem;
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 32px));
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -525,6 +531,7 @@ input[type="color"] {
     position: relative;
     width: 100%;
     height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);
     overflow: hidden;
   }
 
@@ -542,16 +549,25 @@ input[type="color"] {
     bottom: 0;
     left: 0;
     width: 100% !important;
-    max-height: 72vh;
+    max-height: 82dvh;
     z-index: 30;
     border-radius: 20px 20px 0 0;
     border-top: 1px solid var(--panel-border);
     border-right: none;
     box-shadow: 0 -10px 32px rgba(0, 0, 0, 0.75);
-    background: rgba(14, 20, 32, 0.96);
+    background: rgba(14, 20, 32, 0.98);
     backdrop-filter: blur(16px);
     transform: translateY(0);
     transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+  }
+
+  .sidebar-content {
+    padding: 1.2rem;
+    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 36px)) !important;
   }
 
   .sidebar-panel.collapsed {
@@ -564,15 +580,17 @@ input[type="color"] {
   }
 
   .viewport-overlay-top {
-    max-width: 92vw;
+    max-width: 95vw;
     overflow-x: auto;
-    font-size: 0.7rem;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.72rem;
     padding: 0.25rem 0.4rem;
+    gap: 0.3rem;
   }
 
   .view-mode-btn {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.7rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.72rem;
     white-space: nowrap;
   }
 
@@ -582,7 +600,7 @@ input[type="color"] {
 
   .cutaway-panel {
     bottom: 4.5rem;
-    width: 85vw;
+    width: 88vw;
   }
 }
 
