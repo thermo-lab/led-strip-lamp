@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { LampParameters, LampPart } from '../types';
+import { createNoise3D, evalVeinAngle } from '../geometry/organicField';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
 
@@ -186,11 +187,11 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const ledBoxGeo = new THREE.BoxGeometry(4.5, 4.5, 1.4);
     const dieBoxGeo = new THREE.BoxGeometry(2.5, 2.5, 0.4);
 
+    const noise = createNoise3D(params.organicSeed ?? 42);
+
     // Build strip segments for each vein
     const nSegments = 30;
     for (let v = 0; v < veinCount; v++) {
-      const baseTh = (v / veinCount) * 2 * Math.PI;
-
       // Generate flexible strip ribbon geometry
       const stripVerts: number[] = [];
       const stripIndices: number[] = [];
@@ -201,7 +202,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const rNom = getRNom(u);
         const rTrack = rNom - 2.0; // Sits on track inside channel
 
-        const th = baseTh + u * twistRad + u * swirlRad + (waveAmplitude / avgR) * Math.sin(2 * Math.PI * waveFrequency * u);
+        const th = evalVeinAngle(v, veinCount, u, params, noise);
         const dThHalf = (5.0 / rTrack); // 10mm wide strip = 5mm half-width
 
         const xL = rTrack * Math.cos(th - dThHalf);
@@ -237,7 +238,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const z = u * height;
         const rNom = getRNom(u);
         const rTrack = rNom - 1.8;
-        const th = baseTh + u * twistRad + u * swirlRad + (waveAmplitude / avgR) * Math.sin(2 * Math.PI * waveFrequency * u);
+        const th = evalVeinAngle(v, veinCount, u, params, noise);
 
         const ledMesh = new THREE.Mesh(ledBoxGeo, ledBodyMat);
         ledMesh.position.set(rTrack * Math.cos(th), rTrack * Math.sin(th), z);

@@ -12,8 +12,13 @@ const defaultParams: LampParameters = {
   wallThickness: 4.8,
   twistAngle: 75,
 
-  fluteCount: 16,
-  fluteDepth: 1.6,
+  growthMode: 'organic',
+  organicSeed: 42,
+  curlStrength: 2.2,
+  surfaceNoise: 1.6,
+
+  fluteCount: 12,
+  fluteDepth: 1.0,
 
   veinCount: 4,
   veinWidth: 10,

@@ -58,16 +58,40 @@
           </div>
         </section>
 
-        <!-- 2. Surface Texture & Fluting -->
+        <!-- 2. Organic Growth & Form Evolution -->
         <section class="control-section">
-          <div class="section-title">Surface Texture</div>
+          <div class="section-title">Organic Growth & Evolution</div>
           <div class="control-group">
-            <div class="control-label"><span>Fluting Ribs</span><span id="param-flute-count-val" class="control-val">16 ribs</span></div>
-            <input type="range" id="param-flute-count" min="0" max="32" step="2" value="16" />
+            <div class="control-label"><span>Growth Algorithm</span></div>
+            <div class="button-group" style="grid-template-columns: repeat(4, 1fr);">
+              <button class="growth-btn active" data-growth="organic">Organic</button>
+              <button class="growth-btn" data-growth="vortex">Vortex</button>
+              <button class="growth-btn" data-growth="mycelium">Mycelium</button>
+              <button class="growth-btn" data-growth="geometric">Geometric</button>
+            </div>
           </div>
           <div class="control-group">
-            <div class="control-label"><span>Flute Depth</span><span id="param-flute-depth-val" class="control-val">1.6 mm</span></div>
-            <input type="range" id="param-flute-depth" min="0" max="3.5" step="0.1" value="1.6" />
+            <div class="control-label"><span>Particle Curl Flow</span><span id="param-curl-strength-val" class="control-val">2.2</span></div>
+            <input type="range" id="param-curl-strength" min="0" max="5.0" step="0.2" value="2.2" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Biomimetic Texture</span><span id="param-surface-noise-val" class="control-val">1.6 mm</span></div>
+            <input type="range" id="param-surface-noise" min="0" max="4.0" step="0.2" value="1.6" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Evolution Seed</span><span id="param-organic-seed-val" class="control-val">42</span></div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="range" id="param-organic-seed" min="1" max="999" step="1" value="42" style="flex: 1;" />
+              <button id="btn-mutate-seed" class="btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;" title="Mutate/Evolve Random Seed">🎲 Mutate</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Subtle Fluting Ribs</span><span id="param-flute-count-val" class="control-val">12 ribs</span></div>
+            <input type="range" id="param-flute-count" min="0" max="24" step="2" value="12" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Flute Depth</span><span id="param-flute-depth-val" class="control-val">1.0 mm</span></div>
+            <input type="range" id="param-flute-depth" min="0" max="3.0" step="0.1" value="1.0" />
           </div>
         </section>
 

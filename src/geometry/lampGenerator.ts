@@ -1,4 +1,5 @@
 import type { LampParameters, LampPart, MeshData } from '../types';
+import { createNoise3D, evalOrganicRadius, evalVeinAngle } from './organicField';
 
 /**
  * Procedural CAD generator for the dual-material LED lamp using Manifold-3D WASM.
@@ -11,23 +12,19 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     waistRatio,
     wallThickness,
     twistAngle,
-    fluteCount,
-    fluteDepth,
     veinCount,
     veinWidth,
-    veinSwirl,
-    waveAmplitude,
-    waveFrequency,
     veinRelief,
     diffuserThickness,
     bodyColor,
     diffuserColor,
+    organicSeed,
   } = params;
 
-  const nSlices = 24;
+  const noise = createNoise3D(organicSeed ?? 42);
+
+  const nSlices = 28;
   const dz = height / nSlices;
-  const twistRad = (twistAngle * Math.PI) / 180;
-  const swirlRad = veinSwirl * 2 * Math.PI;
 
   const outerSlices: any[] = [];
   const innerSlices: any[] = [];
@@ -56,13 +53,11 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
 
     const twistSliceDeg = (twistAngle / nSlices);
 
-    // 1. Build Outer Polygon (with continuous twisted fluting)
+    // 1. Build Outer Polygon (with evolved organic surface displacement)
     const polyOuter: [number, number][] = [];
     for (let i = 0; i < nPts; i++) {
       const th = (i / nPts) * 2 * Math.PI;
-      const thFlute = th - u0 * twistRad;
-      const fluting = fluteCount > 0 ? fluteDepth * Math.cos(fluteCount * thFlute) : 0;
-      const r = Math.max(15, rNom0 + fluting);
+      const r = evalOrganicRadius(u0, th, rNom0, params, noise);
       polyOuter.push([r * Math.cos(th), r * Math.sin(th)]);
     }
     const csOuter = wasm.CrossSection.ofPolygons([polyOuter]);
@@ -80,13 +75,11 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     const csCore = wasm.CrossSection.ofPolygons([polyCore]);
     innerSlices.push(wasm.Manifold.extrude(csCore, dz + 0.1, 1, twistSliceDeg, [scaleCore, scaleCore]).translate([0, 0, z0 - 0.05]));
 
-    // 3. Build Curved Veins & Strip Tracks
+    // 3. Build Curved Veins & Strip Tracks via Particle Streamline Integration
     for (let v = 0; v < veinCount; v++) {
-      const baseTh = (v / veinCount) * 2 * Math.PI;
-
-      // Vein angle at bottom and top of this slice
-      const th0 = baseTh + u0 * twistRad + u0 * swirlRad + (waveAmplitude / avgR) * Math.sin(2 * Math.PI * waveFrequency * u0);
-      const th1 = baseTh + u1 * twistRad + u1 * swirlRad + (waveAmplitude / avgR) * Math.sin(2 * Math.PI * waveFrequency * u1);
+      // Vein angles at bottom and top of this slice evaluated through the organic flow field
+      const th0 = evalVeinAngle(v, veinCount, u0, params, noise);
+      const th1 = evalVeinAngle(v, veinCount, u1, params, noise);
       const sliceTwistDeg = ((th1 - th0) * 180) / Math.PI;
 
       // Diffuser front radius adjustment based on relief

@@ -549,7 +549,8 @@ input[type="color"] {
     bottom: 0;
     left: 0;
     width: 100% !important;
-    max-height: 82dvh;
+    height: 48dvh;
+    max-height: 48dvh;
     z-index: 30;
     border-radius: 20px 20px 0 0;
     border-top: 1px solid var(--panel-border);

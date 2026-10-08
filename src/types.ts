@@ -9,7 +9,11 @@ export interface LampParameters {
   wallThickness: number;      // Nominal wall thickness (mm), 3.5 - 6.0
   twistAngle: number;         // Total helical twist from base to top (degrees), -180 to 180
 
-  // Surface Texture / Fluting
+  // Surface Texture & Organic Growth
+  growthMode: 'organic' | 'geometric' | 'vortex' | 'mycelium';
+  organicSeed: number;        // Mutation seed (1 to 999)
+  curlStrength: number;       // Particle streamline curl flow (0.0 to 5.0)
+  surfaceNoise: number;       // Biomimetic surface displacement (mm), 0 to 4.0
   fluteCount: number;         // Outer fluted ribs (0 to 32)
   fluteDepth: number;         // Depth of fluted ridges (mm), 0 to 4.0
 

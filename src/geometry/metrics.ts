@@ -1,4 +1,5 @@
 import type { AssemblyMetrics, LampParameters } from '../types';
+import { createNoise3D, evalVeinAngle } from './organicField';
 
 /**
  * Calculates arc length, LED count, power requirements, and assembly clearance checks.
@@ -9,13 +10,12 @@ export function calculateMetrics(params: LampParameters): AssemblyMetrics {
     baseRadius,
     topRadius,
     waistRatio,
-    twistAngle,
     veinCount,
-    veinSwirl,
-    waveAmplitude,
-    waveFrequency,
     wallThickness,
+    organicSeed,
   } = params;
+
+  const noise = createNoise3D(organicSeed ?? 42);
 
   // Numerical integration along height for 3D vein space curve
   const steps = 100;
@@ -24,9 +24,6 @@ export function calculateMetrics(params: LampParameters): AssemblyMetrics {
 
   let minCoreRadius = Infinity;
   let maxOverhangDeg = 0;
-
-  const twistRad = (twistAngle * Math.PI) / 180;
-  const swirlRad = veinSwirl * 2 * Math.PI;
 
   for (let i = 0; i < steps; i++) {
     const u0 = i / steps;
@@ -42,9 +39,9 @@ export function calculateMetrics(params: LampParameters): AssemblyMetrics {
     const rCore0 = rNom0 - wallThickness;
     if (rCore0 < minCoreRadius) minCoreRadius = rCore0;
 
-    // Vein angle theta
-    const th0 = u0 * twistRad + u0 * swirlRad + (waveAmplitude / Math.max(10, rNom0)) * Math.sin(2 * Math.PI * waveFrequency * u0);
-    const th1 = u1 * twistRad + u1 * swirlRad + (waveAmplitude / Math.max(10, rNom1)) * Math.sin(2 * Math.PI * waveFrequency * u1);
+    // Vein angle theta via particle streamline integration
+    const th0 = evalVeinAngle(0, veinCount, u0, params, noise);
+    const th1 = evalVeinAngle(0, veinCount, u1, params, noise);
 
     const x0 = rNom0 * Math.cos(th0);
     const y0 = rNom0 * Math.sin(th0);

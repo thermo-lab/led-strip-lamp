@@ -44,6 +44,36 @@ export function setupUI(
   bindSlider('param-waist-ratio', 'waistRatio', (v) => `${v.toFixed(2)}x`);
   bindSlider('param-twist-angle', 'twistAngle', (v) => `${v}°`);
 
+  // Bind Organic Growth & Evolution Sliders
+  bindSlider('param-curl-strength', 'curlStrength', (v) => v.toFixed(1));
+  bindSlider('param-surface-noise', 'surfaceNoise', (v) => `${v.toFixed(1)} mm`);
+  bindSlider('param-organic-seed', 'organicSeed', (v) => String(Math.round(v)));
+
+  // Growth Mode Selectors
+  const growthButtons = document.querySelectorAll<HTMLButtonElement>('.growth-btn');
+  growthButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      growthButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      current.growthMode = btn.dataset.growth as any;
+      handlers.onParamChange(current);
+    });
+  });
+
+  // Mutate Seed Button
+  const btnMutate = document.getElementById('btn-mutate-seed');
+  if (btnMutate) {
+    btnMutate.addEventListener('click', () => {
+      const nextSeed = Math.floor(Math.random() * 999) + 1;
+      current.organicSeed = nextSeed;
+      const seedInput = document.getElementById('param-organic-seed') as HTMLInputElement;
+      const seedVal = document.getElementById('param-organic-seed-val');
+      if (seedInput) seedInput.value = String(nextSeed);
+      if (seedVal) seedVal.textContent = String(nextSeed);
+      handlers.onParamChange(current);
+    });
+  }
+
   // Bind Fluting Sliders
   bindSlider('param-flute-count', 'fluteCount', (v) => `${v} ribs`);
   bindSlider('param-flute-depth', 'fluteDepth', (v) => `${v.toFixed(1)} mm`);
