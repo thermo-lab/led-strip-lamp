@@ -231,13 +231,60 @@
         <button class="view-mode-btn active" data-mode="night">Night Glow</button>
         <button class="view-mode-btn" data-mode="day">Studio Day</button>
         <button class="view-mode-btn" data-mode="cutaway">Inspect Assembly</button>
+        <button id="btn-inspect-channel" class="view-mode-btn highlight-btn" title="Macro zoom to 10mm C-channel retaining lips">🔍 Retention Detail</button>
         <button id="btn-reset-cam" class="view-mode-btn" title="Reset Viewpoint">Reset Cam</button>
       </div>
 
-      <!-- Cutaway Slider (Shows internal core and strip tracks) -->
+      <!-- Cutaway Slider & Inspection Controls -->
       <div id="cutaway-slider-container" class="cutaway-panel">
-        <span>Cutaway Slice:</span>
-        <input type="range" id="cutaway-slider" min="0" max="1" step="0.01" value="0.5" />
+        <div class="cutaway-slider-row">
+          <span>Slice:</span>
+          <input type="range" id="cutaway-slider" min="0" max="1" step="0.01" value="0.5" />
+        </div>
+        <div class="cutaway-diffuser-row">
+          <span>Diffuser:</span>
+          <div class="pill-group">
+            <button id="btn-diffuser-ghost" class="toggle-pill active" title="Translucent 35% ghost view">Ghost</button>
+            <button id="btn-diffuser-hide" class="toggle-pill" title="Hide diffuser completely">Hide</button>
+            <button id="btn-diffuser-solid" class="toggle-pill" title="Solid opaque diffuser">Solid</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Retention Channel Mechanical Blueprint Callout -->
+      <div id="retention-callout" class="retention-callout-panel" style="display: none;">
+        <div class="callout-header">
+          <div class="callout-title">
+            <span class="callout-badge">WS2812B Captive Track</span>
+            <span class="callout-subtitle">10.0mm Flex Strip Carrier</span>
+          </div>
+          <button id="btn-close-callout" class="callout-close" title="Dismiss Callout">✕</button>
+        </div>
+        <div class="callout-specs">
+          <div class="callout-spec-row">
+            <span class="spec-label">Bed Floor:</span>
+            <span class="spec-val">10.8 mm (+0.4mm slip fit)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Retaining Lips:</span>
+            <span class="spec-val">1.7 mm overhang (45° print chamfer)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Optical Aperture:</span>
+            <span class="spec-val">7.4 mm (5050 LED clearance)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Mixing Chamber:</span>
+            <span class="spec-val">2.4 mm forward flare</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Solid Back Wall:</span>
+            <span class="spec-val">2.4 mm continuous PLA</span>
+          </div>
+        </div>
+        <div class="callout-note">
+          🔒 Strip slides into track from base collar. 45° overhang lips lock flex PCB against floor with zero wobble or sag.
+        </div>
       </div>
 
       <!-- Floating Mobile Controls Toggle Button -->

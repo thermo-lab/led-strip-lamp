@@ -12,10 +12,13 @@ import {
 import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
+export type DiffuserMode = 'ghost' | 'hidden' | 'solid';
 
 export interface LampViewer {
   updateParts(parts: LampPart[], params: LampParameters): void;
   setViewMode(mode: ViewMode): void;
+  setDiffuserMode(mode: DiffuserMode): void;
+  focusRetentionDetail(): void;
   setCutawayPlane(depth: number): void;
   setLightColor(hex: string, intensity: number): void;
   resetCamera(): void;
@@ -50,14 +53,14 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   controls.target.set(0, 0, 75);
   controls.minPolarAngle = 0.05;
   controls.maxPolarAngle = Math.PI / 2 + 0.12; // Prevent flipping beneath floor
-  controls.minDistance = 60;
+  controls.minDistance = 30; // Allows macro close-up inspection
   controls.maxDistance = 650;
   controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
     TWO: THREE.TOUCH.DOLLY_PAN,
   };
 
-  // Clipping Plane for Cutaway Inspection Mode
+  // Clipping Plane for Cutaway Inspection Mode (cuts along X axis)
   const clipPlane = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
 
   // Lighting rigs
@@ -83,13 +86,18 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   studioGroup.add(ambientLight);
   scene.add(studioGroup);
 
-  // 2. Glow Lighting Rig (placed physically along the light channels)
+  // 2. Camera Headlight (pinned to camera: guarantees crisp zero-shadow illumination inside grooves and pockets)
+  const cameraLight = new THREE.DirectionalLight(0xffffff, 1.8);
+  cameraLight.position.set(0, 0, 1);
+  camera.add(cameraLight);
+  scene.add(camera);
+
+  // 3. Glow Lighting Rig (placed physically along the light channels)
   const glowGroup = new THREE.Group();
   const deskGlowLight = new THREE.PointLight(0xff9d3b, 1.8, 180, 1.3);
   deskGlowLight.position.set(0, 0, 8);
   glowGroup.add(deskGlowLight);
 
-  // Multiple distributed point lights for realistic physical light emission
   const veinLights: THREE.PointLight[] = [];
   for (let i = 0; i < 4; i++) {
     const pl = new THREE.PointLight(0xff9d3b, 1.5, 160, 1.2);
@@ -114,10 +122,36 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   const electronicsGroup = new THREE.Group();
   scene.add(electronicsGroup);
 
-  // Mesh Storage
+  // 3D Inspection Blueprint Outline Helper Group
+  const helperGroup = new THREE.Group();
+  scene.add(helperGroup);
+
+  // Mesh Storage & State
   const partMeshes: Map<string, THREE.Mesh> = new Map();
   let currentMode: ViewMode = 'night';
+  let currentDiffuserMode: DiffuserMode = 'ghost';
   let activeParams: LampParameters | null = null;
+
+  // Smooth camera animation tween state
+  let cameraAnimation: {
+    startPos: THREE.Vector3;
+    endPos: THREE.Vector3;
+    startTarget: THREE.Vector3;
+    endTarget: THREE.Vector3;
+    startTime: number;
+    duration: number;
+  } | null = null;
+
+  function animateCameraTo(targetPos: THREE.Vector3, targetLookAt: THREE.Vector3, duration = 800) {
+    cameraAnimation = {
+      startPos: camera.position.clone(),
+      endPos: targetPos.clone(),
+      startTarget: controls.target.clone(),
+      endTarget: targetLookAt.clone(),
+      startTime: performance.now(),
+      duration,
+    };
+  }
 
   function partToThreeGeometry(part: LampPart): THREE.BufferGeometry {
     const geo = new THREE.BufferGeometry();
@@ -138,9 +172,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
   }
 
-  // Build physical WS2812B strips & 5050 LEDs in 3D to match physical geometry
+  // Build physical WS2812B strips & 5050 LEDs seated securely in the 10.8mm captive C-channel
   function rebuildElectronicsModels(params: LampParameters) {
-    // Clear previous electronics models
     while (electronicsGroup.children.length > 0) {
       const child = electronicsGroup.children[0] as any;
       electronicsGroup.remove(child);
@@ -156,12 +189,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       baseRadius,
       topRadius,
       waistRatio,
-      wallThickness,
-      twistAngle,
       veinCount,
-      veinSwirl,
-      waveAmplitude,
-      waveFrequency,
+      diffuserThickness,
       lightColor,
       lightIntensity,
     } = params;
@@ -170,37 +199,34 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       return (1 - u) * baseRadius + u * topRadius + 4 * u * (1 - u) * ((waistRatio - 1) * (baseRadius + topRadius) * 0.5);
     };
 
-    const twistRad = (twistAngle * Math.PI) / 180;
-    const swirlRad = veinSwirl * 2 * Math.PI;
-    const avgR = (baseRadius + topRadius) / 2;
-
     const lColor = new THREE.Color(lightColor);
     const stripTapeMat = new THREE.MeshStandardMaterial({
-      color: 0xefefef, // White flex PCB
-      roughness: 0.5,
-      metalness: 0.1,
+      color: 0xf4f4f5, // White flex PCB substrate
+      roughness: 0.35,
+      metalness: 0.15,
       side: THREE.DoubleSide,
     });
     const ledBodyMat = new THREE.MeshStandardMaterial({
-      color: 0x111111, // 5050 package plastic
-      roughness: 0.6,
+      color: 0x18181b, // 5050 package matte black plastic
+      roughness: 0.5,
+      metalness: 0.1,
     });
     const ledDieMat = new THREE.MeshStandardMaterial({
       color: lColor,
       emissive: lColor,
-      emissiveIntensity: lightIntensity * 2.5,
+      emissiveIntensity: lightIntensity * 2.8,
       roughness: 0.2,
     });
 
-    const ledBoxGeo = new THREE.BoxGeometry(4.5, 4.5, 1.4);
-    const dieBoxGeo = new THREE.BoxGeometry(2.5, 2.5, 0.4);
+    // 5050 LED package: 5.0mm wide, 1.4mm tall (radial), 5.0mm long
+    const ledBoxGeo = new THREE.BoxGeometry(4.8, 1.4, 4.8);
+    const dieBoxGeo = new THREE.BoxGeometry(2.6, 0.4, 2.6);
 
     const noise = createNoise3D(params.organicSeed ?? 42);
 
-    // Build strip segments for each vein along the smooth recessed carrier path
-    const nSegments = 32;
+    // Build strip segments for each vein along the 10.8mm captive channel bed
+    const nSegments = 36;
     for (let v = 0; v < veinCount; v++) {
-      // Generate flexible strip ribbon geometry
       const stripVerts: number[] = [];
       const stripIndices: number[] = [];
 
@@ -208,12 +234,16 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const u = s / nSegments;
         const z = u * height;
         const rNom = getRNom(u);
-        const rCore = Math.max(22.0, rNom - 9.0);
+        const rFront = rNom - diffuserThickness + 0.15;
+        const rLip = rFront - 2.4;
+        const rSlotTop = rLip - 1.0;
+        const rTrack = rSlotTop - 1.4; // Seated flush on the 10.8mm channel bed floor
+
         const thStrip = evalStripAngle(v, veinCount, u, params);
         const [cx, cy] = evalOrganicCenter(u, params, noise);
-        const rTrack = rCore - 0.5; // Seated in recessed track bed
 
-        const dThHalf = 5.0 / Math.max(16, rTrack); // 10mm wide strip = 5mm half-width
+        // 10.0mm wide WS2812B strip = 5.0mm half-width
+        const dThHalf = 5.0 / Math.max(16, rTrack);
 
         const xL = cx + rTrack * Math.cos(thStrip - dThHalf);
         const yL = cy + rTrack * Math.sin(thStrip - dThHalf);
@@ -250,41 +280,46 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const thStrip = evalStripAngle(v, veinCount, u, params);
         const rTrack = led.r;
 
+        // Seated on the strip tape: package center is at rTrack + 0.7
+        const rPackageCenter = rTrack + 0.75;
         const ledMesh = new THREE.Mesh(ledBoxGeo, ledBodyMat);
-        ledMesh.position.set(cx + rTrack * Math.cos(thStrip), cy + rTrack * Math.sin(thStrip), z);
-        ledMesh.rotation.z = thStrip + Math.PI / 2;
-        electronicsGroup.add(ledMesh);
-
-        const dieMesh = new THREE.Mesh(dieBoxGeo, ledDieMat);
-        dieMesh.position.set(
-          cx + (rTrack + 0.6) * Math.cos(thStrip),
-          cy + (rTrack + 0.6) * Math.sin(thStrip),
+        ledMesh.position.set(
+          cx + rPackageCenter * Math.cos(thStrip),
+          cy + rPackageCenter * Math.sin(thStrip),
           z
         );
-        dieMesh.rotation.z = thStrip + Math.PI / 2;
+        ledMesh.rotation.z = thStrip - Math.PI / 2;
+        electronicsGroup.add(ledMesh);
+
+        // Glowing LED die on outward face
+        const rDieCenter = rTrack + 1.45;
+        const dieMesh = new THREE.Mesh(dieBoxGeo, ledDieMat);
+        dieMesh.position.set(
+          cx + rDieCenter * Math.cos(thStrip),
+          cy + rDieCenter * Math.sin(thStrip),
+          z
+        );
+        dieMesh.rotation.z = thStrip - Math.PI / 2;
         electronicsGroup.add(dieMesh);
       });
     }
 
-    // Model the ESP32-C6 SuperMini board in the base cradle
+    // Model ESP32-C6 SuperMini board in the base cradle
     const baseOuterR = baseRadius + 4.0;
     const boardGroup = new THREE.Group();
     boardGroup.position.set(baseOuterR - 15.0, 0, -9.0);
 
-    // PCB substrate (Deep blue/black)
     const pcbGeo = new THREE.BoxGeometry(22.5, 18.0, 1.2);
     const pcbMat = new THREE.MeshStandardMaterial({ color: 0x081a30, roughness: 0.4 });
     const pcb = new THREE.Mesh(pcbGeo, pcbMat);
     boardGroup.add(pcb);
 
-    // Metal RF Shield
     const shieldGeo = new THREE.BoxGeometry(11.0, 13.0, 2.2);
     const shieldMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.85, roughness: 0.25 });
     const shield = new THREE.Mesh(shieldGeo, shieldMat);
     shield.position.set(-3.0, 0, 1.3);
     boardGroup.add(shield);
 
-    // Type-C Receptacle
     const usbGeo = new THREE.BoxGeometry(7.5, 9.0, 3.2);
     const usbMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9, roughness: 0.2 });
     const usb = new THREE.Mesh(usbGeo, usbMat);
@@ -293,8 +328,75 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     electronicsGroup.add(boardGroup);
 
-    // Update clipping plane on all electronics meshes
     applyClippingToGroup(electronicsGroup);
+    rebuildRetentionHelper(params);
+  }
+
+  // Build 3D cross-section outline helper at the cut plane X=0
+  function rebuildRetentionHelper(params: LampParameters) {
+    while (helperGroup.children.length > 0) {
+      const child = helperGroup.children[0] as any;
+      helperGroup.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+    }
+
+    const uMid = 0.485;
+    const h = params.height;
+    const zMid = uMid * h;
+    const rNom = (1 - uMid) * params.baseRadius + uMid * params.topRadius +
+      4 * uMid * (1 - uMid) * ((params.waistRatio - 1) * (params.baseRadius + params.topRadius) * 0.5);
+    const rFront = rNom - params.diffuserThickness + 0.15;
+    const rLip = rFront - 2.4;
+    const rSlotTop = rLip - 1.0;
+    const rBed = rSlotTop - 1.4;
+
+    const wFrontHalf = 5.2;
+    const wLipHalf = 3.7;
+    const wSlotHalf = 5.4;
+
+    // Glowing cyan line outline of the C-channel profile
+    const contourPoints = [
+      new THREE.Vector3(0, rFront, zMid - wFrontHalf),
+      new THREE.Vector3(0, rFront, zMid + wFrontHalf),
+      new THREE.Vector3(0, rLip, zMid + wLipHalf),
+      new THREE.Vector3(0, rSlotTop, zMid + wSlotHalf),
+      new THREE.Vector3(0, rBed, zMid + wSlotHalf),
+      new THREE.Vector3(0, rBed, zMid - wSlotHalf),
+      new THREE.Vector3(0, rSlotTop, zMid - wSlotHalf),
+      new THREE.Vector3(0, rLip, zMid - wLipHalf),
+      new THREE.Vector3(0, rFront, zMid - wFrontHalf),
+    ];
+
+    const contourGeo = new THREE.BufferGeometry().setFromPoints(contourPoints);
+    const contourMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      linewidth: 3,
+      depthTest: false,
+    });
+    const contourLine = new THREE.Line(contourGeo, contourMat);
+    contourLine.renderOrder = 999;
+    helperGroup.add(contourLine);
+
+    // White outline of the seated 10mm flex strip
+    const stripPoints = [
+      new THREE.Vector3(0, rBed + 0.05, zMid - 5.0),
+      new THREE.Vector3(0, rBed + 0.05, zMid + 5.0),
+      new THREE.Vector3(0, rBed + 0.45, zMid + 5.0),
+      new THREE.Vector3(0, rBed + 0.45, zMid - 5.0),
+      new THREE.Vector3(0, rBed + 0.05, zMid - 5.0),
+    ];
+    const stripGeo = new THREE.BufferGeometry().setFromPoints(stripPoints);
+    const stripMat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      linewidth: 2,
+      depthTest: false,
+    });
+    const stripLine = new THREE.Line(stripGeo, stripMat);
+    stripLine.renderOrder = 999;
+    helperGroup.add(stripLine);
+
+    helperGroup.visible = false;
   }
 
   function applyClippingToGroup(group: THREE.Group) {
@@ -322,24 +424,51 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     studioGroup.visible = !isNight || isCutaway;
     glowGroup.visible = isNight || isCutaway;
     electronicsGroup.visible = isCutaway;
+    cameraLight.intensity = isCutaway ? 2.4 : 0.9;
 
     renderer.clippingPlanes = isCutaway ? [clipPlane] : [];
 
     const lColor = new THREE.Color(activeParams?.lightColor ?? '#ff9d3b');
     const intensity = activeParams?.lightIntensity ?? 1.2;
 
-    // Apply material emissive & diffuse colors to veins in ALL modes
     partMeshes.forEach((mesh, id) => {
       const mat = mesh.material as THREE.MeshStandardMaterial;
       mat.clippingPlanes = isCutaway ? [clipPlane] : [];
       mat.clipShadows = true;
 
       if (id === 'veins') {
-        // Vein material radiates the chosen light color in all modes
-        mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
-        mat.emissive = lColor;
-        mat.emissiveIntensity = isNight ? intensity * 2.2 : (isCutaway ? intensity * 1.5 : 0.8);
-        mat.roughness = isNight ? 0.25 : 0.45;
+        if (isCutaway) {
+          if (currentDiffuserMode === 'hidden') {
+            mesh.visible = false;
+          } else if (currentDiffuserMode === 'ghost') {
+            mesh.visible = true;
+            mat.transparent = true;
+            mat.opacity = 0.35;
+            mat.roughness = 0.15;
+            mat.depthWrite = false;
+            mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.3);
+            mat.emissive = lColor;
+            mat.emissiveIntensity = 0.8;
+          } else {
+            // solid
+            mesh.visible = true;
+            mat.transparent = false;
+            mat.opacity = 1.0;
+            mat.depthWrite = true;
+            mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
+            mat.emissive = lColor;
+            mat.emissiveIntensity = 1.5;
+          }
+        } else {
+          mesh.visible = true;
+          mat.transparent = false;
+          mat.opacity = 1.0;
+          mat.depthWrite = true;
+          mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
+          mat.emissive = lColor;
+          mat.emissiveIntensity = isNight ? intensity * 2.2 : 0.8;
+          mat.roughness = isNight ? 0.25 : 0.45;
+        }
       }
     });
 
@@ -349,7 +478,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   function updateParts(parts: LampPart[], params: LampParameters) {
     activeParams = params;
 
-    // Remove old part meshes
     partMeshes.forEach((mesh) => {
       scene.remove(mesh);
       mesh.geometry.dispose();
@@ -359,7 +487,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     const lColor = new THREE.Color(params.lightColor);
 
-    // Create new meshes
     parts.forEach((p) => {
       const geo = partToThreeGeometry(p);
       let mat: THREE.MeshStandardMaterial;
@@ -392,10 +519,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       partMeshes.set(p.id, mesh);
     });
 
-    // Rebuild internal LED strips & electronics models
     rebuildElectronicsModels(params);
 
-    // Position distributed lights along actual vein curves
     const rMid = (params.baseRadius + params.topRadius) * 0.45;
     veinLights.forEach((vl, idx) => {
       const th = (idx / veinLights.length) * 2 * Math.PI + 0.3;
@@ -414,7 +539,42 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
   function setViewMode(mode: ViewMode) {
     currentMode = mode;
+    if (mode !== 'cutaway') {
+      helperGroup.visible = false;
+    }
     applyViewStyle();
+  }
+
+  function setDiffuserMode(mode: DiffuserMode) {
+    currentDiffuserMode = mode;
+    applyViewStyle();
+  }
+
+  function focusRetentionDetail() {
+    currentMode = 'cutaway';
+    currentDiffuserMode = 'ghost';
+    clipPlane.constant = 0;
+
+    applyViewStyle();
+    helperGroup.visible = true;
+
+    if (activeParams) {
+      const uMid = 0.485;
+      const h = activeParams.height;
+      const zMid = uMid * h;
+      const rNom = (1 - uMid) * activeParams.baseRadius + uMid * activeParams.topRadius +
+        4 * uMid * (1 - uMid) * ((activeParams.waistRatio - 1) * (activeParams.baseRadius + activeParams.topRadius) * 0.5);
+      const rFront = rNom - activeParams.diffuserThickness + 0.15;
+      const rLip = rFront - 2.4;
+      const rSlotTop = rLip - 1.0;
+      const rBed = rSlotTop - 1.4;
+
+      // Target directly on Channel 0 cross-section at Z ~ 85mm
+      const target = new THREE.Vector3(0, rBed + 1.2, zMid);
+      // Camera positioned directly on -X side facing the exposed cut face, slightly elevated
+      const camPos = new THREE.Vector3(-45, rBed - 1.0, zMid + 6.0);
+      animateCameraTo(camPos, target, 800);
+    }
   }
 
   function setCutawayPlane(progress: number) {
@@ -445,7 +605,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       mat.emissiveIntensity = currentMode === 'night' ? intensity * 2.2 : (currentMode === 'cutaway' ? intensity * 1.5 : 0.8);
     }
 
-    // Update LED dies inside strip
     electronicsGroup.traverse((obj: any) => {
       if (obj.isMesh && obj.material && obj.material.emissive) {
         obj.material.color = color;
@@ -456,18 +615,31 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   }
 
   function resetCamera() {
+    helperGroup.visible = false;
     const h = activeParams?.height ?? 180;
-    camera.up.set(0, 0, 1);
-    camera.position.set(h * 0.9, -h * 1.1, h * 0.7);
-    controls.target.set(0, 0, h * 0.45);
-    controls.update();
+    const endPos = new THREE.Vector3(h * 0.9, -h * 1.1, h * 0.7);
+    const endTarget = new THREE.Vector3(0, 0, h * 0.45);
+    animateCameraTo(endPos, endTarget, 650);
   }
 
-  // Animation loop
+  // Animation loop with smooth camera easing
   let reqId = 0;
   function animate() {
     reqId = requestAnimationFrame(animate);
-    controls.update();
+
+    if (cameraAnimation) {
+      const elapsed = performance.now() - cameraAnimation.startTime;
+      const t = Math.min(1, elapsed / cameraAnimation.duration);
+      // Smooth cubic ease-in-out
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      camera.position.lerpVectors(cameraAnimation.startPos, cameraAnimation.endPos, ease);
+      controls.target.lerpVectors(cameraAnimation.startTarget, cameraAnimation.endTarget, ease);
+      controls.update();
+      if (t >= 1) cameraAnimation = null;
+    } else {
+      controls.update();
+    }
+
     renderer.render(scene, camera);
   }
   animate();
@@ -484,6 +656,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   return {
     updateParts,
     setViewMode,
+    setDiffuserMode,
+    focusRetentionDetail,
     setCutawayPlane,
     setLightColor,
     resetCamera,

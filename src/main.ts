@@ -73,6 +73,12 @@ const ui = setupUI(defaultParams, {
   onViewModeChange(mode) {
     viewer.setViewMode(mode);
   },
+  onDiffuserModeChange(mode) {
+    viewer.setDiffuserMode(mode);
+  },
+  onInspectRetentionDetail() {
+    viewer.focusRetentionDetail();
+  },
   onCutawayChange(progress) {
     viewer.setCutawayPlane(progress);
   },

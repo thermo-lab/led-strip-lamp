@@ -75,7 +75,11 @@ export function computeStripPhysicalMetrics(params: LampParameters): StripPhysic
     const t = i / nSteps;
     const u = sMin + t * (sMax - sMin);
     const z = u * height;
-    const rTrack = getRCore(u) - 0.5; // Seated on recessed track bed
+    const rNom = getRNom(u);
+    const rFront = rNom - params.diffuserThickness + 0.15;
+    const rLip = rFront - 2.4;
+    const rSlotTop = rLip - 1.0;
+    const rTrack = rSlotTop - 1.4; // Seated on recessed channel bed floor
     const th = t * totalAscent;
 
     points.push({

@@ -1,9 +1,11 @@
 import type { AssemblyMetrics, LampParameters, VeinRelief } from '../types';
-import type { ViewMode } from '../viewer/viewer';
+import type { DiffuserMode, ViewMode } from '../viewer/viewer';
 
 export interface UIHandlers {
   onParamChange: (params: LampParameters) => void;
   onViewModeChange: (mode: ViewMode) => void;
+  onDiffuserModeChange: (mode: DiffuserMode) => void;
+  onInspectRetentionDetail: () => void;
   onCutawayChange: (progress: number) => void;
   onLightLiveChange: (hex: string, intensity: number) => void;
   onExport3MF: () => void;
@@ -231,19 +233,75 @@ export function setupUI(
   const viewModeButtons = document.querySelectorAll<HTMLButtonElement>('.view-mode-btn');
   const cutawayContainer = document.getElementById('cutaway-slider-container');
   const cutawaySlider = document.getElementById('cutaway-slider') as HTMLInputElement;
+  const btnInspectChannel = document.getElementById('btn-inspect-channel');
+  const retentionCallout = document.getElementById('retention-callout');
+  const btnCloseCallout = document.getElementById('btn-close-callout');
 
   viewModeButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode as ViewMode;
+      if (!mode) return; // Specialized buttons like inspect-channel handled separately
+
       viewModeButtons.forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      const mode = btn.dataset.mode as ViewMode;
       handlers.onViewModeChange(mode);
 
       if (cutawayContainer) {
         cutawayContainer.style.display = mode === 'cutaway' ? 'flex' : 'none';
       }
+      if (retentionCallout) {
+        retentionCallout.style.display = 'none';
+      }
     });
   });
+
+  // Dedicated "Retention Detail" Macro Zoom
+  if (btnInspectChannel) {
+    btnInspectChannel.addEventListener('click', () => {
+      viewModeButtons.forEach((b) => b.classList.remove('active'));
+      btnInspectChannel.classList.add('active');
+
+      if (cutawayContainer) {
+        cutawayContainer.style.display = 'flex';
+      }
+      if (cutawaySlider) {
+        cutawaySlider.value = '0.5';
+      }
+      if (retentionCallout) {
+        retentionCallout.style.display = 'block';
+      }
+
+      // Sync diffuser pill to ghost
+      diffuserPills.forEach((p) => p.classList.toggle('active', p.id === 'btn-diffuser-ghost'));
+
+      handlers.onInspectRetentionDetail();
+    });
+  }
+
+  // Diffuser Mode Toggle Pills (Ghost / Hide / Solid)
+  const diffuserPills = [
+    document.getElementById('btn-diffuser-ghost'),
+    document.getElementById('btn-diffuser-hide'),
+    document.getElementById('btn-diffuser-solid'),
+  ].filter(Boolean) as HTMLButtonElement[];
+
+  diffuserPills.forEach((pill) => {
+    pill.addEventListener('click', () => {
+      diffuserPills.forEach((p) => p.classList.remove('active'));
+      pill.classList.add('active');
+
+      if (pill.id === 'btn-diffuser-ghost') handlers.onDiffuserModeChange('ghost');
+      else if (pill.id === 'btn-diffuser-hide') handlers.onDiffuserModeChange('hidden');
+      else handlers.onDiffuserModeChange('solid');
+    });
+  });
+
+  // Dismiss Blueprint Callout
+  if (btnCloseCallout && retentionCallout) {
+    btnCloseCallout.addEventListener('click', () => {
+      retentionCallout.style.display = 'none';
+    });
+  }
 
   if (cutawaySlider) {
     cutawaySlider.addEventListener('input', () => {
@@ -254,7 +312,10 @@ export function setupUI(
   // Camera Reset
   const resetCamBtn = document.getElementById('btn-reset-cam');
   if (resetCamBtn) {
-    resetCamBtn.addEventListener('click', handlers.onResetCamera);
+    resetCamBtn.addEventListener('click', () => {
+      if (retentionCallout) retentionCallout.style.display = 'none';
+      handlers.onResetCamera();
+    });
   }
 
   // Mobile Sidebar Collapse / Expand Handlers

@@ -161,12 +161,14 @@ function buildSweptDiffuserMesh(
 }
 
 /**
- * Builds deeply recessed forward-shining optical chamber & smooth strip carrier track.
- * Flares forward from the recessed 10mm flex strip bed (at thStrip) to the outer vein (at thVein).
- * Because the physical strip track follows a smooth helix (zero wiggles), the strip slides
- * or snaps into place with zero kink or sideways buckling.
+ * Builds deeply recessed captive C-channel & forward-shining optical chamber.
+ * Contains:
+ * 1. 10.8mm wide recessed bed for 10.0mm WS2812B flex strip (+0.4mm slip clearance per side)
+ * 2. 1.8mm tall pocket guide sidewalls
+ * 3. Bilateral 45° overhang retaining lips (1.7mm overhang each side) restricting aperture to 7.4mm
+ * 4. Forward optical mixing chamber flaring to outer vein window
  */
-function buildRecessedChamberMesh(
+function buildCaptiveChamberMesh(
   nSlices: number,
   sMin: number,
   sMax: number,
@@ -181,13 +183,13 @@ function buildRecessedChamberMesh(
   const { height, diffuserThickness } = params;
   const verts: number[] = [];
   const tris: number[] = [];
-  const nArcSteps = 4;
-  const ptsPerRing = (nArcSteps + 1) * 2;
   const nVeinSlices = sMax - sMin;
+  const nProfilePts = 8;
 
   for (let s = sMin; s <= sMax; s++) {
     const u = s / nSlices;
     const z = u * height;
+    const [cx, cy] = centerFn(u);
     const rNom = getRNom(u);
     const thVein = evalVeinAngle(veinIndex, veinCount, u, params, noise);
     const thStrip = evalStripAngle(veinIndex, veinCount, u, params);
@@ -195,58 +197,55 @@ function buildRecessedChamberMesh(
     const rCore = getRCore(u);
     const wVein = evalVeinWidth(veinIndex, u, params, noise);
 
-    // Front of chamber meets back of diffuser seamlessly
     const rFront = rOuter - diffuserThickness + 0.15;
-    const dThFront = (wVein + 0.4) / Math.max(16, rFront);
+    const rLip = rFront - 2.4;
+    const rSlotTop = rLip - 1.0;
+    const rBed = rSlotTop - 1.4;
 
-    // Recessed strip bed: sits in wall, accessible from the hollow core for insertion
-    // 11.2mm width gives 0.6mm clearance per side for standard 10mm flex PCB
-    const rBack = rCore - 1.5;
-    const dThBack = 11.2 / Math.max(16, rBack);
+    const dThFrontHalf = (wVein + 0.4) / (2 * Math.max(16, rFront));
+    const dThSlotHalf = 5.4 / Math.max(16, rSlotTop); // 10.8mm slot
+    const dThLipHalf = 3.7 / Math.max(16, rLip);      // 7.4mm aperture (1.7mm retaining lips)
 
-    const [cx, cy] = centerFn(u);
-
-    // Front arc (meets rear of diffuser)
-    for (let i = 0; i <= nArcSteps; i++) {
-      const th = thVein - dThFront / 2 + (i / nArcSteps) * dThFront;
-      verts.push(cx + rFront * Math.cos(th), cy + rFront * Math.sin(th), z);
-    }
-    // Back arc (smooth recessed track bed for 10mm strip)
-    for (let i = nArcSteps; i >= 0; i--) {
-      const th = thStrip - dThBack / 2 + (i / nArcSteps) * dThBack;
-      verts.push(cx + rBack * Math.cos(th), cy + rBack * Math.sin(th), z);
-    }
+    // p0: Front left
+    verts.push(cx + rFront * Math.cos(thVein - dThFrontHalf), cy + rFront * Math.sin(thVein - dThFrontHalf), z);
+    // p1: Front right
+    verts.push(cx + rFront * Math.cos(thVein + dThFrontHalf), cy + rFront * Math.sin(thVein + dThFrontHalf), z);
+    // p2: Lip right
+    verts.push(cx + rLip * Math.cos(thStrip + dThLipHalf), cy + rLip * Math.sin(thStrip + dThLipHalf), z);
+    // p3: Slot top right
+    verts.push(cx + rSlotTop * Math.cos(thStrip + dThSlotHalf), cy + rSlotTop * Math.sin(thStrip + dThSlotHalf), z);
+    // p4: Bed right
+    verts.push(cx + rBed * Math.cos(thStrip + dThSlotHalf), cy + rBed * Math.sin(thStrip + dThSlotHalf), z);
+    // p5: Bed left
+    verts.push(cx + rBed * Math.cos(thStrip - dThSlotHalf), cy + rBed * Math.sin(thStrip - dThSlotHalf), z);
+    // p6: Slot top left
+    verts.push(cx + rSlotTop * Math.cos(thStrip - dThSlotHalf), cy + rSlotTop * Math.sin(thStrip - dThSlotHalf), z);
+    // p7: Lip left
+    verts.push(cx + rLip * Math.cos(thStrip - dThLipHalf), cy + rLip * Math.sin(thStrip - dThLipHalf), z);
   }
 
-  // Connect quad-strip side walls
   for (let s = 0; s < nVeinSlices; s++) {
-    const r0 = s * ptsPerRing;
-    const r1 = (s + 1) * ptsPerRing;
-    for (let i = 0; i < ptsPerRing; i++) {
-      const next = (i + 1) % ptsPerRing;
+    const r0 = s * nProfilePts;
+    const r1 = (s + 1) * nProfilePts;
+    for (let i = 0; i < nProfilePts; i++) {
+      const next = (i + 1) % nProfilePts;
       tris.push(r0 + i, r0 + next, r1 + next);
       tris.push(r0 + i, r1 + next, r1 + i);
     }
   }
 
-  // Bottom cap
-  for (let i = 0; i < nArcSteps; i++) {
-    tris.push(i, ptsPerRing - 1 - i, ptsPerRing - 2 - i);
-    tris.push(i, ptsPerRing - 2 - i, i + 1);
-  }
+  // Bottom cap (-Z)
+  tris.push(0, 7, 2); tris.push(0, 2, 1);
+  tris.push(7, 6, 3); tris.push(7, 3, 2);
+  tris.push(6, 5, 4); tris.push(6, 4, 3);
 
-  // Top cap
-  const topStart = nVeinSlices * ptsPerRing;
-  for (let i = 0; i < nArcSteps; i++) {
-    tris.push(topStart + i, topStart + ptsPerRing - 2 - i, topStart + ptsPerRing - 1 - i);
-    tris.push(topStart + i, topStart + i + 1, topStart + ptsPerRing - 2 - i);
-  }
+  // Top cap (+Z)
+  const top0 = nVeinSlices * nProfilePts;
+  tris.push(top0 + 0, top0 + 2, top0 + 7); tris.push(top0 + 0, top0 + 1, top0 + 2);
+  tris.push(top0 + 7, top0 + 3, top0 + 6); tris.push(top0 + 7, top0 + 2, top0 + 3);
+  tris.push(top0 + 6, top0 + 4, top0 + 5); tris.push(top0 + 6, top0 + 3, top0 + 4);
 
-  return {
-    vertProperties: new Float32Array(verts),
-    triVerts: new Uint32Array(tris),
-    numProp: 3,
-  };
+  return { vertProperties: new Float32Array(verts), triVerts: new Uint32Array(tris), numProp: 3 };
 }
 
 /**
@@ -254,7 +253,7 @@ function buildRecessedChamberMesh(
  * Continuous lofted geometry guarantees:
  * - 100% airtight topological match at outer surface (zero residual skin or clipping)
  * - Solid continuous crown at top rim and solid collar at bottom rim (zero gaps/holes)
- * - Smooth helical recessed tracks for kink-free 10mm flex PCB strip installation
+ * - Captive C-channel with 45° retaining lips locking 10mm flex strip against channel floor
  * - Forward-shining optical mixing chambers for uniform, hotspot-free diffusion
  * - Guaranteed >= 44mm open hollow core for finger and wire assembly
  */
@@ -336,7 +335,7 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     );
     veinSolids.push(wasm.Manifold.ofMesh(diffMesh));
 
-    const chamMesh = buildRecessedChamberMesh(
+    const chamMesh = buildCaptiveChamberMesh(
       nSlices,
       sMin,
       sMax,
