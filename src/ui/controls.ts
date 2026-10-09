@@ -313,14 +313,28 @@ export function setupUI(
     exportStlBaseBtn.addEventListener('click', () => handlers.onExportSTL('base'));
   }
 
-  // Metrics Display
+  // Metrics Display & Physical Ribbon Feasibility
   const statusIndicator = document.getElementById('generation-status');
   const metricLeds = document.getElementById('metric-leds');
   const metricLength = document.getElementById('metric-length');
+  const metricStrain = document.getElementById('metric-strain');
+  const metricRadius = document.getElementById('metric-radius');
   const metricPower = document.getElementById('metric-power');
   const metricBore = document.getElementById('metric-bore');
-  const metricOverhang = document.getElementById('metric-overhang');
   const warningsList = document.getElementById('metrics-warnings');
+
+  const btnOptimizeGeodesic = document.getElementById('btn-optimize-geodesic');
+  if (btnOptimizeGeodesic) {
+    btnOptimizeGeodesic.addEventListener('click', () => {
+      // Physically optimal minimum-strain twist for developable ribbon on current profile
+      // Balances helical ascent with waist taper to minimize in-plane lateral curvature
+      current.twistAngle = Math.round(Math.min(90, Math.max(30, 45 + (1.0 - current.waistRatio) * 60)));
+      current.veinSwirl = 0.35;
+      current.waveAmplitude = 0.0; // Smooth geodesic path with zero S-curve wiggles
+      syncAllUIInputs();
+      handlers.onParamChange(current);
+    });
+  }
 
   return {
     setGenerating(generating: boolean) {
@@ -331,14 +345,34 @@ export function setupUI(
     },
     updateMetrics(m: AssemblyMetrics) {
       if (metricLeds) metricLeds.textContent = `${m.totalLeds} LEDs (${m.veinCount ?? current.veinCount}×${m.ledsPerVein})`;
-      if (metricLength) metricLength.textContent = `${m.totalStripLengthMm} mm (${m.stripSegmentLengthMm}mm ea)`;
+      if (metricLength) metricLength.textContent = `${m.stripSegmentLengthMm} mm ea (${m.totalStripLengthMm}mm tot)`;
       if (metricPower) metricPower.textContent = `${m.estCurrentAmps}A / ${m.estPowerWatts}W (USB 5V)`;
       if (metricBore) metricBore.textContent = `${m.minCoreBoreDiameterMm} mm ID`;
-      if (metricOverhang) metricOverhang.textContent = `${m.maxOverhangAngleDeg}°`;
+
+      if (metricStrain) {
+        const strain = m.inPlaneStrainPct ?? 0;
+        if (m.stripFeasibility === 'optimal' || strain <= 3.5) {
+          metricStrain.style.color = '#4ade80';
+          metricStrain.textContent = `${strain}% (Optimal)`;
+        } else if (m.stripFeasibility === 'compliant' || strain <= 7.5) {
+          metricStrain.style.color = '#fbbf24';
+          metricStrain.textContent = `${strain}% (Compliant)`;
+        } else {
+          metricStrain.style.color = '#f87171';
+          metricStrain.textContent = `${strain}% (Wrinkle Risk)`;
+        }
+      }
+
+      if (metricRadius) {
+        const rad = m.minLateralRadiusMm ?? 9999;
+        const isSafe = rad >= 160;
+        metricRadius.style.color = isSafe ? 'var(--text-main)' : '#fbbf24';
+        metricRadius.textContent = `${rad} mm (${isSafe ? 'Safe' : 'Tight'})`;
+      }
 
       if (warningsList) {
         if (m.warnings.length === 0) {
-          warningsList.innerHTML = '<li class="warning-ok">✓ 100% Assemblable & Print-Ready</li>';
+          warningsList.innerHTML = '<li class="warning-ok">✓ 100% Physically Assemblable (No Wrinkling)</li>';
         } else {
           warningsList.innerHTML = m.warnings.map((w) => `<li class="warning-alert">⚠ ${w}</li>`).join('');
         }

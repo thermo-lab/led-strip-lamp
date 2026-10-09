@@ -9,6 +9,7 @@ import {
   evalStripAngle,
   evalVeinAngle,
 } from '../geometry/organicField';
+import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
 
@@ -240,16 +241,14 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       const stripMesh = new THREE.Mesh(stripGeo, stripTapeMat);
       electronicsGroup.add(stripMesh);
 
-      // Place discrete 5050 LED chips every ~16.67mm
-      const nLeds = Math.max(3, Math.round(height / 16.67));
-      for (let l = 1; l < nLeds; l++) {
-        const u = l / nLeds;
-        const z = u * height;
-        const rNom = getRNom(u);
-        const rCore = Math.max(22.0, rNom - 9.0);
-        const thStrip = evalStripAngle(v, veinCount, u, params);
+      // Place discrete 5050 LED chips strictly at 16.6667mm physical pitch
+      const stripPhys = computeStripPhysicalMetrics(params);
+      stripPhys.ledPositions.forEach((led) => {
+        const u = led.u;
+        const z = led.z;
         const [cx, cy] = evalOrganicCenter(u, params, noise);
-        const rTrack = rCore - 0.5;
+        const thStrip = evalStripAngle(v, veinCount, u, params);
+        const rTrack = led.r;
 
         const ledMesh = new THREE.Mesh(ledBoxGeo, ledBodyMat);
         ledMesh.position.set(cx + rTrack * Math.cos(thStrip), cy + rTrack * Math.sin(thStrip), z);
@@ -264,7 +263,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         );
         dieMesh.rotation.z = thStrip + Math.PI / 2;
         electronicsGroup.add(dieMesh);
-      }
+      });
     }
 
     // Model the ESP32-C6 SuperMini board in the base cradle

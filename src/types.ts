@@ -60,6 +60,12 @@ export interface AssemblyMetrics {
   maxOverhangAngleDeg: number;
   isAssemblable: boolean;
   warnings: string[];
+
+  // Physical WS2812B Ribbon Mechanics
+  inPlaneStrainPct: number;
+  minLateralRadiusMm: number;
+  minNormalRadiusMm: number;
+  stripFeasibility: 'optimal' | 'compliant' | 'buckling_risk';
 }
 
 export interface GeometryRequest {

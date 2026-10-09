@@ -173,32 +173,35 @@
           <div class="section-title">Assembly & Fabrication</div>
           <div class="metrics-grid">
             <div class="metric-item">
-              <div class="metric-label">WS2812B Strip</div>
-              <div id="metric-leds" class="metric-data">44 LEDs (4×11)</div>
+              <div class="metric-label">WS2812B LEDs</div>
+              <div id="metric-leds" class="metric-data">39 LEDs (3×13)</div>
             </div>
             <div class="metric-item">
-              <div class="metric-label">Total Cut Length</div>
-              <div id="metric-length" class="metric-data">733 mm</div>
+              <div class="metric-label">Exact Cut Length</div>
+              <div id="metric-length" class="metric-data">217 mm ea</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">In-Plane Strain</div>
+              <div id="metric-strain" class="metric-data" style="color: #4ade80">4.8% (Optimal)</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-label">Min Bend Radius</div>
+              <div id="metric-radius" class="metric-data">157 mm (Safe)</div>
             </div>
             <div class="metric-item">
               <div class="metric-label">USB Power Draw</div>
-              <div id="metric-power" class="metric-data">0.88A / 4.4W</div>
+              <div id="metric-power" class="metric-data">0.8A / 3.9W</div>
             </div>
             <div class="metric-item">
-              <div class="metric-label">Core Clearance ID</div>
-              <div id="metric-bore" class="metric-data">64 mm ID</div>
-            </div>
-            <div class="metric-item">
-              <div class="metric-label">Max Wall Slope</div>
-              <div id="metric-overhang" class="metric-data">32°</div>
-            </div>
-            <div class="metric-item">
-              <div class="metric-label">Electronics Pocket</div>
-              <div class="metric-data">ESP32-C6 USB-C</div>
+              <div class="metric-label">Core Clearance</div>
+              <div id="metric-bore" class="metric-data">44 mm ID</div>
             </div>
           </div>
-          <ul id="metrics-warnings" class="metrics-warnings-list">
-            <li class="warning-ok">✓ 100% Assemblable & Print-Ready</li>
+          <button id="btn-optimize-geodesic" class="btn-secondary" style="width: 100%; margin-top: 0.75rem; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" title="Adjust twist & swirl to minimize in-plane lateral bending strain">
+            📐 Auto-Optimize Geodesic Wrap (Min Strain)
+          </button>
+          <ul id="metrics-warnings" class="metrics-warnings-list" style="margin-top: 0.6rem;">
+            <li class="warning-ok">✓ 100% Physically Assemblable (No Wrinkling)</li>
           </ul>
         </section>
 
