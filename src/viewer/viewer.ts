@@ -342,11 +342,26 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       if (child.material) child.material.dispose();
     }
 
-    const uMid = 0.485;
     const h = params.height;
-    const zMid = uMid * h;
-    const rNom = (1 - uMid) * params.baseRadius + uMid * params.topRadius +
-      4 * uMid * (1 - uMid) * ((params.waistRatio - 1) * (params.baseRadius + params.topRadius) * 0.5);
+    // Find the vein and elevation u where a channel intersects the cut plane X=0 on the +Y side (mid-height)
+    let bestU = 0.478;
+    let minDiff = 999;
+    for (let v = 0; v < params.veinCount; v++) {
+      for (let s = 20; s <= 80; s++) {
+        const u = s / 100;
+        const th = evalStripAngle(v, params.veinCount, u, params);
+        const x = Math.cos(th);
+        const y = Math.sin(th);
+        if (y > 0 && Math.abs(x) < minDiff) {
+          minDiff = Math.abs(x);
+          bestU = u;
+        }
+      }
+    }
+
+    const zMid = bestU * h;
+    const rNom = (1 - bestU) * params.baseRadius + bestU * params.topRadius +
+      4 * bestU * (1 - bestU) * ((params.waistRatio - 1) * (params.baseRadius + params.topRadius) * 0.5);
     const rFront = rNom - params.diffuserThickness + 0.15;
     const rLip = (rNom - params.diffuserThickness) - 1.5;
     const rSlotTop = rLip - 1.0;
@@ -561,17 +576,30 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     helperGroup.visible = true;
 
     if (activeParams) {
-      const uMid = 0.485;
       const h = activeParams.height;
-      const zMid = uMid * h;
-      const rNom = (1 - uMid) * activeParams.baseRadius + uMid * activeParams.topRadius +
-        4 * uMid * (1 - uMid) * ((activeParams.waistRatio - 1) * (activeParams.baseRadius + activeParams.topRadius) * 0.5);
-      const rFront = rNom - activeParams.diffuserThickness + 0.15;
-      const rLip = rFront - 2.4;
+      let bestU = 0.478;
+      let minDiff = 999;
+      for (let v = 0; v < activeParams.veinCount; v++) {
+        for (let s = 20; s <= 80; s++) {
+          const u = s / 100;
+          const th = evalStripAngle(v, activeParams.veinCount, u, activeParams);
+          const x = Math.cos(th);
+          const y = Math.sin(th);
+          if (y > 0 && Math.abs(x) < minDiff) {
+            minDiff = Math.abs(x);
+            bestU = u;
+          }
+        }
+      }
+
+      const zMid = bestU * h;
+      const rNom = (1 - bestU) * activeParams.baseRadius + bestU * activeParams.topRadius +
+        4 * bestU * (1 - bestU) * ((activeParams.waistRatio - 1) * (activeParams.baseRadius + activeParams.topRadius) * 0.5);
+      const rLip = (rNom - activeParams.diffuserThickness) - 1.5;
       const rSlotTop = rLip - 1.0;
       const rBed = rSlotTop - 1.4;
 
-      // Target directly on Channel 0 cross-section at Z ~ 85mm
+      // Target directly on C-channel cross-section at the cut plane X=0
       const target = new THREE.Vector3(0, rBed + 1.2, zMid);
       // Camera positioned directly on -X side facing the exposed cut face, slightly elevated
       const camPos = new THREE.Vector3(-45, rBed - 1.0, zMid + 6.0);

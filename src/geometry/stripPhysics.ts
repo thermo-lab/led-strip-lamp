@@ -1,4 +1,5 @@
 import type { LampParameters } from '../types';
+import { evalStripAngle } from './organicField';
 
 export interface PhysicalLEDPlacement {
   index: number;
@@ -80,7 +81,7 @@ export function computeStripPhysicalMetrics(params: LampParameters): StripPhysic
     const rSlotTop = rLip - 1.0;
     const rBed = rSlotTop - 1.4;
     const rTrack = rBed + 0.15; // 0.15mm off channel bed floor
-    const th = t * totalAscent;
+    const th = evalStripAngle(0, veinCount, u, params);
 
     points.push({
       t,

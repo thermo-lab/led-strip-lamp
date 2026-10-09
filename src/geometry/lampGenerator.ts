@@ -192,13 +192,12 @@ function buildCaptiveChamberMesh(
     const z = u * height;
     const [cx, cy] = centerFn(u);
     const rNom = getRNom(u);
-    const thVein = evalVeinAngle(veinIndex, veinCount, u, params, noise);
-    const thStrip = evalStripAngle(veinIndex, veinCount, u, params);
-    const rOuter = evalOrganicRadius(u, thVein, rNom, params, noise);
+    const th = evalVeinAngle(veinIndex, veinCount, u, params, noise);
+    const rOuter = evalOrganicRadius(u, th, rNom, params, noise);
     const wVein = evalVeinWidth(veinIndex, u, params, noise);
 
     const rFront = rOuter - diffuserThickness + 0.15;
-    const rLip = rFront - 2.4;
+    const rLip = (rNom - diffuserThickness) - 1.5;
     const rSlotTop = rLip - 1.0;
     const rBed = rSlotTop - 1.4;
 
@@ -208,25 +207,25 @@ function buildCaptiveChamberMesh(
 
     // 1. Front window arc (matching diffuser interface curvature)
     for (let i = 0; i <= nArcSteps; i++) {
-      const th = thVein - dThFront / 2 + (i / nArcSteps) * dThFront;
-      verts.push(cx + rFront * Math.cos(th), cy + rFront * Math.sin(th), z);
+      const a = th - dThFront / 2 + (i / nArcSteps) * dThFront;
+      verts.push(cx + rFront * Math.cos(a), cy + rFront * Math.sin(a), z);
     }
 
     // 2. Right stepped shoulder & slot pocket:
     // Lip right
-    verts.push(cx + rLip * Math.cos(thStrip + dThLipHalf), cy + rLip * Math.sin(thStrip + dThLipHalf), z);
+    verts.push(cx + rLip * Math.cos(th + dThLipHalf), cy + rLip * Math.sin(th + dThLipHalf), z);
     // Slot top right
-    verts.push(cx + rSlotTop * Math.cos(thStrip + dThSlotHalf), cy + rSlotTop * Math.sin(thStrip + dThSlotHalf), z);
+    verts.push(cx + rSlotTop * Math.cos(th + dThSlotHalf), cy + rSlotTop * Math.sin(th + dThSlotHalf), z);
     // Bed right
-    verts.push(cx + rBed * Math.cos(thStrip + dThSlotHalf), cy + rBed * Math.sin(thStrip + dThSlotHalf), z);
+    verts.push(cx + rBed * Math.cos(th + dThSlotHalf), cy + rBed * Math.sin(th + dThSlotHalf), z);
 
     // 3. Left stepped shoulder & slot pocket:
     // Bed left
-    verts.push(cx + rBed * Math.cos(thStrip - dThSlotHalf), cy + rBed * Math.sin(thStrip - dThSlotHalf), z);
+    verts.push(cx + rBed * Math.cos(th - dThSlotHalf), cy + rBed * Math.sin(th - dThSlotHalf), z);
     // Slot top left
-    verts.push(cx + rSlotTop * Math.cos(thStrip - dThSlotHalf), cy + rSlotTop * Math.sin(thStrip - dThSlotHalf), z);
+    verts.push(cx + rSlotTop * Math.cos(th - dThSlotHalf), cy + rSlotTop * Math.sin(th - dThSlotHalf), z);
     // Lip left
-    verts.push(cx + rLip * Math.cos(thStrip - dThLipHalf), cy + rLip * Math.sin(thStrip - dThLipHalf), z);
+    verts.push(cx + rLip * Math.cos(th - dThLipHalf), cy + rLip * Math.sin(th - dThLipHalf), z);
   }
 
   // Connect quad-strip side walls between slices
@@ -243,9 +242,9 @@ function buildCaptiveChamberMesh(
   // Bottom cap (-Z): add center point
   const botCenterIdx = verts.length / 3;
   const [bcx, bcy] = centerFn(sMin / nSlices);
-  const bThStrip = evalStripAngle(veinIndex, veinCount, sMin / nSlices, params);
+  const bTh = evalVeinAngle(veinIndex, veinCount, sMin / nSlices, params, noise);
   const brLip = (getRNom(sMin / nSlices) - params.diffuserThickness) - 1.5;
-  verts.push(bcx + brLip * Math.cos(bThStrip), bcy + brLip * Math.sin(bThStrip), (sMin / nSlices) * height);
+  verts.push(bcx + brLip * Math.cos(bTh), bcy + brLip * Math.sin(bTh), (sMin / nSlices) * height);
   for (let i = 0; i < nProfilePts; i++) {
     const next = (i + 1) % nProfilePts;
     tris.push(botCenterIdx, next, i);
@@ -254,9 +253,9 @@ function buildCaptiveChamberMesh(
   // Top cap (+Z): add center point
   const topCenterIdx = verts.length / 3;
   const [tcx, tcy] = centerFn(sMax / nSlices);
-  const tThStrip = evalStripAngle(veinIndex, veinCount, sMax / nSlices, params);
+  const tTh = evalVeinAngle(veinIndex, veinCount, sMax / nSlices, params, noise);
   const trLip = (getRNom(sMax / nSlices) - params.diffuserThickness) - 1.5;
-  verts.push(tcx + trLip * Math.cos(tThStrip), tcy + trLip * Math.sin(tThStrip), (sMax / nSlices) * height);
+  verts.push(tcx + trLip * Math.cos(tTh), tcy + trLip * Math.sin(tTh), (sMax / nSlices) * height);
   const top0 = nVeinSlices * nProfilePts;
   for (let i = 0; i < nProfilePts; i++) {
     const next = (i + 1) % nProfilePts;
