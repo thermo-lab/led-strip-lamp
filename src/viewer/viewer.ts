@@ -237,7 +237,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const rNom = getRNom(u);
         const rLip = (rNom - diffuserThickness) - 1.5;
         const rSlotTop = rLip - 1.0;
-        const rBed = rSlotTop - 1.4;
+        const rBed = rSlotTop - 2.0; // 2.0mm deep pocket under retaining lips
         const rTrack = rBed + 0.15; // 0.15mm off channel bed floor for tape thickness
 
         const thStrip = evalStripAngle(v, veinCount, u, params);
@@ -365,11 +365,11 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const rFront = rNom - params.diffuserThickness + 0.15;
     const rLip = (rNom - params.diffuserThickness) - 1.5;
     const rSlotTop = rLip - 1.0;
-    const rBed = rSlotTop - 1.4;
+    const rBed = rSlotTop - 2.0; // 2.0mm deep pocket under retaining lips
 
     const wFrontHalf = 5.2;
-    const wLipHalf = 3.7;
-    const wSlotHalf = 5.4;
+    const wLipHalf = 3.8; // 7.6mm aperture
+    const wSlotHalf = 5.8; // 11.6mm wide bed (+0.8mm clearance per side)
 
     // Glowing cyan line outline of the C-channel profile
     const contourPoints = [
@@ -597,10 +597,10 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         4 * bestU * (1 - bestU) * ((activeParams.waistRatio - 1) * (activeParams.baseRadius + activeParams.topRadius) * 0.5);
       const rLip = (rNom - activeParams.diffuserThickness) - 1.5;
       const rSlotTop = rLip - 1.0;
-      const rBed = rSlotTop - 1.4;
+      const rBed = rSlotTop - 2.0; // 2.0mm deep pocket under retaining lips
 
       // Target directly on C-channel cross-section at the cut plane X=0
-      const target = new THREE.Vector3(0, rBed + 1.2, zMid);
+      const target = new THREE.Vector3(0, rBed + 1.5, zMid);
       // Camera positioned directly on -X side facing the exposed cut face, slightly elevated
       const camPos = new THREE.Vector3(-45, rBed - 1.0, zMid + 6.0);
       animateCameraTo(camPos, target, 800);

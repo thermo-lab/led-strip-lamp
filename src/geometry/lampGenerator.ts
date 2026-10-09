@@ -168,42 +168,60 @@ function buildSweptDiffuserMesh(
  * 3. Bilateral 45° overhang retaining lips (1.7mm overhang each side) restricting aperture to 7.4mm
  * 4. Forward optical mixing chamber flaring to outer vein window with matching 8-arc curvature
  */
+/**
+ * Procedural mesh generator for the internal captive C-channel light chamber.
+ * Features:
+ * 1. 11.6mm wide recessed bed for 10.0mm WS2812B flex strip (+0.8mm slip clearance per side)
+ * 2. 2.0mm tall pocket guide sidewalls beneath retaining lips (+1.65mm clearance above tape for solder blobs)
+ * 3. Bilateral 45° overhang retaining lips restricting aperture to 7.6mm (2.0mm overhang per side)
+ * 4. Forward optical mixing chamber flaring to outer vein window with matching 8-arc curvature
+ * 5. Open flared entry throat extending through Z = 0 on the bottom collar for effortless strip insertion
+ */
 function buildCaptiveChamberMesh(
   nSlices: number,
-  sMin: number,
   sMax: number,
   veinIndex: number,
   veinCount: number,
   params: LampParameters,
   noise: any,
   centerFn: (u: number) => [number, number],
-  getRNom: (u: number) => number,
-  getRCore: (u: number) => number
+  getRNom: (u: number) => number
 ): { vertProperties: Float32Array; triVerts: Uint32Array; numProp: number } {
   const { height, diffuserThickness } = params;
   const verts: number[] = [];
   const tris: number[] = [];
-  const nVeinSlices = sMax - sMin;
-  const nArcSteps = 8; // Matches diffuser arc steps!
-  const nProfilePts = (nArcSteps + 1) + 6; // 9 front arc + 3 right + 3 left = 15 pts
+  const nArcSteps = 8;
+  const nProfilePts = (nArcSteps + 1) + 6;
+  const sMinDiffuser = Math.max(2, Math.round(nSlices * 0.04));
 
-  for (let s = sMin; s <= sMax; s++) {
+  for (let s = 0; s <= sMax; s++) {
     const u = s / nSlices;
-    const z = u * height;
+    const z = s === 0 ? -1.0 : u * height;
     const [cx, cy] = centerFn(u);
     const rNom = getRNom(u);
     const th = evalVeinAngle(veinIndex, veinCount, u, params, noise);
     const rOuter = evalOrganicRadius(u, th, rNom, params, noise);
     const wVein = evalVeinWidth(veinIndex, u, params, noise);
 
-    const rFront = rOuter - diffuserThickness + 0.15;
     const rLip = (rNom - diffuserThickness) - 1.5;
     const rSlotTop = rLip - 1.0;
-    const rBed = rSlotTop - 1.4;
+    const rBed = rSlotTop - 2.0; // 2.0mm deep pocket under retaining lips
 
-    const dThFront = (wVein + 0.4) / Math.max(16, rFront);
-    const dThSlotHalf = 5.4 / Math.max(16, rSlotTop); // 10.8mm slot
-    const dThLipHalf = 3.7 / Math.max(16, rLip);      // 7.4mm aperture (1.7mm retaining lips)
+    // For s < sMinDiffuser, keep front closed inside solid shell; for s >= sMinDiffuser, open front window
+    let rFront = rOuter - diffuserThickness + 0.15;
+    let dThFront = (wVein + 0.4) / Math.max(16, rFront);
+
+    if (s < sMinDiffuser) {
+      // Taper front window into rLip so outer front shell remains solid between Z=0 and Z=7mm
+      const blend = s / sMinDiffuser;
+      rFront = rLip + blend * (rFront - rLip);
+      dThFront = (3.8 * 2 / Math.max(16, rFront)) * (1 - blend) + dThFront * blend;
+    }
+
+    // Flared entry throat at bottom (s=0): widen slot by 1.6mm for effortless funnel insertion
+    const flare = s === 0 ? 0.8 : (s === 1 ? 0.4 : 0.0);
+    const dThSlotHalf = (5.8 + flare) / Math.max(16, rSlotTop); // 11.6mm nominal bed, flares to 13.2mm at mouth
+    const dThLipHalf = (3.8 - (s === 0 ? 0.5 : 0)) / Math.max(16, rLip); // 7.6mm aperture
 
     // 1. Front window arc (matching diffuser interface curvature)
     for (let i = 0; i <= nArcSteps; i++) {
@@ -212,24 +230,18 @@ function buildCaptiveChamberMesh(
     }
 
     // 2. Right stepped shoulder & slot pocket:
-    // Lip right
     verts.push(cx + rLip * Math.cos(th + dThLipHalf), cy + rLip * Math.sin(th + dThLipHalf), z);
-    // Slot top right
     verts.push(cx + rSlotTop * Math.cos(th + dThSlotHalf), cy + rSlotTop * Math.sin(th + dThSlotHalf), z);
-    // Bed right
     verts.push(cx + rBed * Math.cos(th + dThSlotHalf), cy + rBed * Math.sin(th + dThSlotHalf), z);
 
     // 3. Left stepped shoulder & slot pocket:
-    // Bed left
     verts.push(cx + rBed * Math.cos(th - dThSlotHalf), cy + rBed * Math.sin(th - dThSlotHalf), z);
-    // Slot top left
     verts.push(cx + rSlotTop * Math.cos(th - dThSlotHalf), cy + rSlotTop * Math.sin(th - dThSlotHalf), z);
-    // Lip left
     verts.push(cx + rLip * Math.cos(th - dThLipHalf), cy + rLip * Math.sin(th - dThLipHalf), z);
   }
 
   // Connect quad-strip side walls between slices
-  for (let s = 0; s < nVeinSlices; s++) {
+  for (let s = 0; s < sMax; s++) {
     const r0 = s * nProfilePts;
     const r1 = (s + 1) * nProfilePts;
     for (let i = 0; i < nProfilePts; i++) {
@@ -239,24 +251,24 @@ function buildCaptiveChamberMesh(
     }
   }
 
-  // Bottom cap (-Z): add center point
+  // Bottom cap (-Z) at z = -1.0mm (open through-cut)
   const botCenterIdx = verts.length / 3;
-  const [bcx, bcy] = centerFn(sMin / nSlices);
-  const bTh = evalVeinAngle(veinIndex, veinCount, sMin / nSlices, params, noise);
-  const brLip = (getRNom(sMin / nSlices) - params.diffuserThickness) - 1.5;
-  verts.push(bcx + brLip * Math.cos(bTh), bcy + brLip * Math.sin(bTh), (sMin / nSlices) * height);
+  const [bcx, bcy] = centerFn(0);
+  const bTh = evalVeinAngle(veinIndex, veinCount, 0, params, noise);
+  const brLip = (getRNom(0) - params.diffuserThickness) - 1.5;
+  verts.push(bcx + brLip * Math.cos(bTh), bcy + brLip * Math.sin(bTh), -1.0);
   for (let i = 0; i < nProfilePts; i++) {
     const next = (i + 1) % nProfilePts;
     tris.push(botCenterIdx, next, i);
   }
 
-  // Top cap (+Z): add center point
+  // Top cap (+Z) at s = sMax
   const topCenterIdx = verts.length / 3;
   const [tcx, tcy] = centerFn(sMax / nSlices);
   const tTh = evalVeinAngle(veinIndex, veinCount, sMax / nSlices, params, noise);
   const trLip = (getRNom(sMax / nSlices) - params.diffuserThickness) - 1.5;
   verts.push(tcx + trLip * Math.cos(tTh), tcy + trLip * Math.sin(tTh), (sMax / nSlices) * height);
-  const top0 = nVeinSlices * nProfilePts;
+  const top0 = sMax * nProfilePts;
   for (let i = 0; i < nProfilePts; i++) {
     const next = (i + 1) % nProfilePts;
     tris.push(topCenterIdx, top0 + i, top0 + next);
@@ -352,17 +364,16 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     );
     veinSolids.push(wasm.Manifold.ofMesh(diffMesh));
 
+    // Chamber extends down to s=0 to cut open feed mouth on bottom collar
     const chamMesh = buildCaptiveChamberMesh(
       nSlices,
-      sMin,
       sMax,
       v,
       veinCount,
       params,
       noise,
       centerFn,
-      getRNom,
-      getRCore
+      getRNom
     );
     chamberSolids.push(wasm.Manifold.ofMesh(chamMesh));
   }
@@ -380,18 +391,18 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     .subtract(allVeinCutters)
     .subtract(allChambers);
 
-  // 5. Add 3 Twist-Lock Bayonet Lugs to bottom collar
+  // 5. Add 3 Twist-Lock Bayonet Lugs to bottom collar projecting downward from Z=0 to Z=-5.0mm
   const nLugs = 3;
   const lugSolids: any[] = [];
   const lugH = 5.0;
   const lugThick = 2.5;
   const rCoreBase = getRCore(0);
+  const rLugIn = rCoreBase - 2.5;
+  const rLugOut = rCoreBase + 0.5;
 
   for (let i = 0; i < nLugs; i++) {
     const th = (i / nLugs) * 2 * Math.PI;
-    const rLugIn = rCoreBase - 0.5;
-    const rLugOut = rLugIn + lugThick;
-    const span = (25 * Math.PI) / 180;
+    const span = (22 * Math.PI) / 180;
     const pLug: [number, number][] = [
       [rLugIn * Math.cos(th - span / 2), rLugIn * Math.sin(th - span / 2)],
       [rLugOut * Math.cos(th - span / 2), rLugOut * Math.sin(th - span / 2)],
@@ -399,36 +410,61 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
       [rLugIn * Math.cos(th + span / 2), rLugIn * Math.sin(th + span / 2)],
     ];
     const csLug = wasm.CrossSection.ofPolygons([pLug]);
-    lugSolids.push(wasm.Manifold.extrude(csLug, lugH, 1, 0, [1, 1]).translate([0, 0, 0]));
+    lugSolids.push(wasm.Manifold.extrude(csLug, lugH, 1, 0, [1, 1]).translate([0, 0, -lugH]));
   }
   if (lugSolids.length > 0) {
     const lugs = wasm.Manifold.union(lugSolids);
     opaqueBody = opaqueBody.add(lugs);
   }
 
-  // 6. Electronics Base Cradle (Part 3)
+  // 6. Electronics Base Cradle (Part 3) with matching female bayonet twist-lock channels
   const baseH = 14.0;
   const baseOuterR = baseRadius + 4.0;
   const baseOuterCyl = wasm.Manifold.cylinder(baseH, baseOuterR, baseOuterR, 64);
-  const baseInnerVoid = wasm.Manifold.cylinder(baseH - 2.5, baseRadius - 1.5, baseRadius - 1.5, 64).translate([0, 0, 2.5]);
+  const wireHole = wasm.Manifold.cylinder(baseH + 2, 12.0, 12.0, 32).translate([0, 0, -1]);
+  const pcbCavity = wasm.Manifold.cylinder(9.0, 46.5, 46.5, 64).translate([0, 0, baseH - 9.0]);
+  const hubRim = wasm.Manifold.cylinder(baseH, rCoreBase + 0.5, rCoreBase + 0.5, 64)
+    .subtract(wasm.Manifold.cylinder(baseH + 2, rCoreBase - 3.5, rCoreBase - 3.5, 64).translate([0, 0, -1]));
 
-  // ESP32-C6 SuperMini Pocket (23.5mm x 18.5mm x 4.0mm)
-  const espPocket = wasm.Manifold.cube([23.5, 18.5, 5.0], true)
-    .translate([baseOuterR - 15.0, 0, 4.0]);
+  let baseSolid = baseOuterCyl.subtract(wireHole).subtract(pcbCavity).add(hubRim);
 
-  // USB-C Pass-through Portal (10.5mm wide x 4.5mm high)
-  const usbPortal = wasm.Manifold.cube([18.0, 10.5, 4.8], true)
-    .translate([baseOuterR - 4.0, 0, 4.0]);
+  // Female bayonet entry slots and horizontal locking undercuts
+  const bayonetCuts: any[] = [];
+  for (let i = 0; i < nLugs; i++) {
+    const th = (i / nLugs) * 2 * Math.PI;
+    const rCutIn = rLugIn - 0.5;
+    const rCutOut = rLugOut + 0.8;
+    const slotSpan = (28 * Math.PI) / 180;
+    const pEntry: [number, number][] = [
+      [rCutIn * Math.cos(th - slotSpan / 2), rCutIn * Math.sin(th - slotSpan / 2)],
+      [rCutOut * Math.cos(th - slotSpan / 2), rCutOut * Math.sin(th - slotSpan / 2)],
+      [rCutOut * Math.cos(th + slotSpan / 2), rCutOut * Math.sin(th + slotSpan / 2)],
+      [rCutIn * Math.cos(th + slotSpan / 2), rCutIn * Math.sin(th + slotSpan / 2)],
+    ];
+    const csEntry = wasm.CrossSection.ofPolygons([pEntry]);
+    bayonetCuts.push(wasm.Manifold.extrude(csEntry, 5.8, 1, 0, [1, 1]).translate([0, 0, baseH - 5.8]));
 
-  // Wire routing center conduit
-  const wireConduit = wasm.Manifold.cylinder(baseH + 1, 14.0, 14.0, 32).translate([0, 0, -0.5]);
+    const twistSpan = (38 * Math.PI) / 180;
+    const pTwist: [number, number][] = [
+      [rCutIn * Math.cos(th - slotSpan / 2), rCutIn * Math.sin(th - slotSpan / 2)],
+      [rCutOut * Math.cos(th - slotSpan / 2), rCutOut * Math.sin(th - slotSpan / 2)],
+      [rCutOut * Math.cos(th + twistSpan), rCutOut * Math.sin(th + twistSpan)],
+      [rCutIn * Math.cos(th + twistSpan), rCutIn * Math.sin(th + twistSpan)],
+    ];
+    const csTwist = wasm.CrossSection.ofPolygons([pTwist]);
+    bayonetCuts.push(wasm.Manifold.extrude(csTwist, 3.2, 1, 0, [1, 1]).translate([0, 0, baseH - 5.8]));
+  }
+  const allBayonetCuts = wasm.Manifold.union(bayonetCuts);
 
-  const baseCradle = baseOuterCyl
-    .subtract(baseInnerVoid)
+  // ESP32-C6 SuperMini Pocket & USB-C Portal
+  const espPocket = wasm.Manifold.cube([23.5, 18.5, 5.0], true).translate([baseOuterR - 15.0, 0, 4.0]);
+  const usbPortal = wasm.Manifold.cube([18.0, 10.5, 4.8], true).translate([baseOuterR - 4.0, 0, 4.0]);
+
+  const baseCradle = baseSolid
+    .subtract(allBayonetCuts)
     .subtract(espPocket)
     .subtract(usbPortal)
-    .subtract(wireConduit)
-    .translate([0, 0, -baseH - 2.0]);
+    .translate([0, 0, -baseH]);
 
   const toMeshData = (solid: any): MeshData => {
     const raw = solid.getMesh();

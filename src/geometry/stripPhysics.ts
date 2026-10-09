@@ -79,7 +79,7 @@ export function computeStripPhysicalMetrics(params: LampParameters): StripPhysic
     const rNom = getRNom(u);
     const rLip = (rNom - params.diffuserThickness) - 1.5;
     const rSlotTop = rLip - 1.0;
-    const rBed = rSlotTop - 1.4;
+    const rBed = rSlotTop - 2.0; // 2.0mm deep pocket
     const rTrack = rBed + 0.15; // 0.15mm off channel bed floor
     const th = evalStripAngle(0, veinCount, u, params);
 
