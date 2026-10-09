@@ -327,7 +327,96 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     usb.position.set(10.5, 0, 2.2);
     boardGroup.add(usb);
 
+    // Gold header pin rows along left and right PCB edges
+    const pinGeo = new THREE.BoxGeometry(16.0, 1.4, 1.8);
+    const pinMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 });
+    const pinRowL = new THREE.Mesh(pinGeo, pinMat);
+    pinRowL.position.set(-1.0, 7.2, 1.3);
+    boardGroup.add(pinRowL);
+
+    const pinRowR = new THREE.Mesh(pinGeo, pinMat);
+    pinRowR.position.set(-1.0, -7.2, 1.3);
+    boardGroup.add(pinRowR);
+
     electronicsGroup.add(boardGroup);
+
+    // 3D Physical Wiring Harness: 3-conductor colored wire ribbons (Red +5V, Black GND, Green DATA)
+    // Connecting each of the 3 strip funnels through the floor raceways directly into the ESP32 pin headers
+    const redWireMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35 });
+    const blackWireMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.4 });
+    const greenWireMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.35 });
+
+    const wireMaterials = [redWireMat, blackWireMat, greenWireMat];
+    const wireOffsets = [-0.65, 0, 0.65];
+
+    const bx = baseOuterR - 16.75;
+    const bz = -10.4;
+    const rSlotTop0 = (baseRadius - diffuserThickness) - 1.5 - 1.0;
+    const rTrack0 = (rSlotTop0 - 2.0) + 0.15;
+
+    for (let v = 0; v < veinCount; v++) {
+      const th0 = evalVeinAngle(v, veinCount, 0, params, noise);
+      const [fcx, fcy] = evalOrganicCenter(0, params, noise);
+      const startX = fcx + rTrack0 * Math.cos(th0);
+      const startY = fcy + rTrack0 * Math.sin(th0);
+
+      // Target pin header connection point on ESP32 board for this vein
+      let targetX = bx - 6.0;
+      let targetY = 0;
+      if (v === 0) {
+        targetY = 6.8; // +Y header row
+      } else if (v === 2) {
+        targetY = -6.8; // -Y header row
+      } else {
+        targetX = bx - 10.5; // Rear center notch
+        targetY = 0;
+      }
+
+      // Generate 3 parallel individual conductor tubes per vein
+      for (let w = 0; w < 3; w++) {
+        const off = wireOffsets[w];
+        // Perpendicular lateral normal in XY
+        const nx = -Math.sin(th0) * off;
+        const ny = Math.cos(th0) * off;
+
+        const p0 = new THREE.Vector3(startX + nx, startY + ny, 0.2);
+        // Drops through flared funnel mouth at Z=0 down to Z=-5.0mm
+        const p1 = new THREE.Vector3(
+          fcx + (rTrack0 - 3.5) * Math.cos(th0) + nx,
+          fcy + (rTrack0 - 3.5) * Math.sin(th0) + ny,
+          -5.0
+        );
+        // Follows the floor raceway at Z=-11.4mm
+        const p2 = new THREE.Vector3(
+          20.0 * Math.cos(th0) + nx * 0.7,
+          20.0 * Math.sin(th0) + ny * 0.7,
+          -11.4
+        );
+        // Merges into central wiring hub basin
+        const p3 = new THREE.Vector3(
+          7.0 * Math.cos(th0),
+          7.0 * Math.sin(th0),
+          -11.4
+        );
+        // Routes through forward conduit trunk toward board
+        const p4 = new THREE.Vector3(
+          16.0,
+          targetY * 0.45,
+          -11.4
+        );
+        // Plugs securely into ESP32 board header pin
+        const p5 = new THREE.Vector3(
+          targetX,
+          targetY + off * 0.5,
+          bz
+        );
+
+        const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3, p4, p5]);
+        const wireGeo = new THREE.TubeGeometry(curve, 36, 0.32, 8, false);
+        const wireMesh = new THREE.Mesh(wireGeo, wireMaterials[w]);
+        electronicsGroup.add(wireMesh);
+      }
+    }
 
     applyClippingToGroup(electronicsGroup);
     rebuildRetentionHelper(params);

@@ -421,7 +421,6 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
   const baseH = 14.0;
   const baseOuterR = baseRadius + 4.0;
   const baseOuterCyl = wasm.Manifold.cylinder(baseH, baseOuterR, baseOuterR, 64);
-  const wireHole = wasm.Manifold.cylinder(baseH + 2, 13.0, 13.0, 32).translate([0, 0, -1]);
   // Open interior electronics cavity (floor at Z = 2.5mm, depth 11.5mm)
   const cavity = wasm.Manifold.cylinder(baseH - 2.5, 46.5, 46.5, 64).translate([0, 0, 2.5]);
 
@@ -469,9 +468,33 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
   const allBosses = wasm.Manifold.union(bossSolids);
   const allBayonetCuts = wasm.Manifold.union(bayonetCuts);
 
+  // Dedicated Wire Routing Raceways Molded into the Floor (depth 1.4mm into the 2.5mm floor):
+  // 1. Central wire junction basin (diameter 26mm, depth 1.4mm)
+  const hubBasin = wasm.Manifold.cylinder(1.5, 13.0, 13.0, 48).translate([0, 0, 1.2]);
+
+  // 2. Radial branch channel under Funnel 0 (theta=60 deg): width 5.5mm
+  const branch0 = wasm.Manifold.cube([44.0, 5.5, 1.5], true)
+    .translate([22.0, 0, 1.95])
+    .rotate([0, 0, 60]);
+
+  // 3. Radial branch channel under Funnel 2 (theta=300 deg): width 5.5mm
+  const branch2 = wasm.Manifold.cube([44.0, 5.5, 1.5], true)
+    .translate([22.0, 0, 1.95])
+    .rotate([0, 0, -60]);
+
+  // 4. Radial branch channel under Funnel 1 (theta=180 deg): width 5.5mm
+  const branch1 = wasm.Manifold.cube([44.0, 5.5, 1.5], true)
+    .translate([-22.0, 0, 1.95]);
+
+  // 5. Forward trunk connecting central hub into ESP32 rear notch (theta=0 deg): width 7.0mm
+  const trunk0 = wasm.Manifold.cube([26.0, 7.0, 1.5], true)
+    .translate([13.0, 0, 1.95]);
+
+  const allRaceways = wasm.Manifold.union([hubBasin, branch0, branch2, branch1, trunk0]);
+
   let baseSolid = baseOuterCyl
-    .subtract(wireHole)
     .subtract(cavity)
+    .subtract(allRaceways)
     .add(allBosses)
     .subtract(allBayonetCuts);
 
