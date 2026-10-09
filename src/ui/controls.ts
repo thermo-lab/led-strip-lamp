@@ -62,6 +62,21 @@ export function setupUI(
     });
   });
 
+  // Vein Pattern Selectors (Continuous vs Segmented Windows)
+  const patternButtons = document.querySelectorAll<HTMLButtonElement>('.pattern-btn');
+  const groupVeinSegments = document.getElementById('group-vein-segments');
+  patternButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      patternButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      current.veinPattern = btn.dataset.pattern as any;
+      if (groupVeinSegments) {
+        groupVeinSegments.style.display = current.veinPattern === 'segmented' ? 'block' : 'none';
+      }
+      handlers.onParamChange(current);
+    });
+  });
+
   const syncAllUIInputs = () => {
     const updateInput = (id: string, val: any, format?: (v: any) => string) => {
       const el = document.getElementById(id) as HTMLInputElement;
@@ -85,8 +100,13 @@ export function setupUI(
     updateInput('param-vein-swirl', current.veinSwirl, (v) => `${v.toFixed(2)} turns`);
     updateInput('param-wave-amp', current.waveAmplitude, (v) => `${v.toFixed(1)} mm`);
     updateInput('param-wave-freq', current.waveFrequency, (v) => `${v.toFixed(1)} cyc`);
+    updateInput('param-vein-segments', current.veinSegments, (v) => `${v} windows`);
 
     growthButtons.forEach((b) => b.classList.toggle('active', b.dataset.growth === current.growthMode));
+    patternButtons.forEach((b) => b.classList.toggle('active', b.dataset.pattern === current.veinPattern));
+    if (groupVeinSegments) {
+      groupVeinSegments.style.display = current.veinPattern === 'segmented' ? 'block' : 'none';
+    }
   };
 
   // Sculptural Presets
@@ -106,6 +126,9 @@ export function setupUI(
         current.twistAngle = 85;
         current.curlStrength = 2.4;
         current.surfaceNoise = 1.6;
+        current.waveAmplitude = 2.6;
+        current.waveFrequency = 1.5;
+        current.veinPattern = 'continuous';
         current.lightColor = '#ff9d3b';
         current.bodyColor = '#5a6578';
       } else if (preset === 'basalt') {
@@ -117,6 +140,10 @@ export function setupUI(
         current.twistAngle = 60;
         current.curlStrength = 3.2;
         current.surfaceNoise = 2.4;
+        current.waveAmplitude = 3.8;
+        current.waveFrequency = 2.0;
+        current.veinPattern = 'segmented';
+        current.veinSegments = 5;
         current.lightColor = '#00f2fe';
         current.bodyColor = '#475569';
       } else if (preset === 'vortex') {
@@ -128,6 +155,9 @@ export function setupUI(
         current.twistAngle = 120;
         current.curlStrength = 3.0;
         current.surfaceNoise = 1.4;
+        current.waveAmplitude = 4.5;
+        current.waveFrequency = 2.2;
+        current.veinPattern = 'continuous';
         current.lightColor = '#a855f7';
         current.bodyColor = '#64748b';
       } else if (preset === 'nordic') {
@@ -139,6 +169,9 @@ export function setupUI(
         current.twistAngle = 45;
         current.curlStrength = 0.0;
         current.surfaceNoise = 0.0;
+        current.waveAmplitude = 0.0;
+        current.waveFrequency = 1.0;
+        current.veinPattern = 'continuous';
         current.fluteCount = 16;
         current.fluteDepth = 1.8;
         current.lightColor = '#ffbe76';
@@ -175,6 +208,7 @@ export function setupUI(
   bindSlider('param-vein-swirl', 'veinSwirl', (v) => `${v.toFixed(2)} turns`);
   bindSlider('param-wave-amp', 'waveAmplitude', (v) => `${v.toFixed(1)} mm`);
   bindSlider('param-wave-freq', 'waveFrequency', (v) => `${v.toFixed(1)} cyc`);
+  bindSlider('param-vein-segments', 'veinSegments', (v) => `${v} windows`);
 
   // Vein Relief Selectors
   const reliefButtons = document.querySelectorAll<HTMLButtonElement>('.relief-btn');

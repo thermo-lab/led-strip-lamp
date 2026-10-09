@@ -355,7 +355,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const rTrack0 = (rSlotTop0 - 2.0) + 0.15;
 
     for (let v = 0; v < veinCount; v++) {
-      const th0 = evalVeinAngle(v, veinCount, 0, params, noise);
+      const th0 = evalStripAngle(v, veinCount, 0, params);
       const [fcx, fcy] = evalOrganicCenter(0, params, noise);
       const startX = fcx + rTrack0 * Math.cos(th0);
       const startY = fcy + rTrack0 * Math.sin(th0);

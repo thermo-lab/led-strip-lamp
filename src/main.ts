@@ -27,6 +27,8 @@ const defaultParams: LampParameters = {
   waveFrequency: 1.5,
   veinRelief: 'flush',
   diffuserThickness: 1.8,
+  veinPattern: 'continuous',
+  veinSegments: 5,
 
   lightColor: '#ff9d3b', // Warm amber / candlelight 2400K
   lightIntensity: 1.2,

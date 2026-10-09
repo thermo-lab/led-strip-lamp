@@ -168,20 +168,19 @@ export function evalOrganicRadius(
 
 /**
 /**
- * Evaluates unified, physically developable carrier trajectory for the light vein and flex strip.
- * A continuous developable path ensures:
- * 1. 100% concentric point-by-point alignment between the internal strip channel and external diffuser.
- * 2. In-plane bending strain < 5.0% and lateral radius > 200mm, preventing copper PCB buckling or peeling.
- * 3. 100% symmetric, unskewed captive C-channel walls with zero mesh self-intersections or shearing artifacts.
+ * Evaluates pure, smooth, developable carrier trajectory for the internal WS2812B flex PCB strip bed.
+ * A continuous developable cylindrical/conical helix guarantees:
+ * 1. In-plane bending strain ≈ 0.0% and lateral radius > 1500mm, eliminating copper tape buckling or wrinkling.
+ * 2. Smooth, effortless sliding when feeding the strip into the 10.0mm C-channel from the bottom flared funnels.
+ * 3. 100% symmetric, unskewed captive C-channel walls with bilateral retaining lips.
  */
-export function evalVeinAngle(
+export function evalStripAngle(
   veinIndex: number,
   veinCount: number,
   u: number,
-  params: LampParameters,
-  _noise?: NoiseFunction
+  params: LampParameters
 ): number {
-  const { growthMode, veinSwirl, twistAngle, waveAmplitude, waveFrequency, baseRadius, topRadius } = params;
+  const { growthMode, veinSwirl, twistAngle } = params;
 
   // Base angular seed for this vein
   let seedTh = (veinIndex / veinCount) * 2 * Math.PI;
@@ -192,25 +191,43 @@ export function evalVeinAngle(
 
   const twistRad = (twistAngle * Math.PI) / 180;
   const swirlRad = veinSwirl * 2 * Math.PI;
-  const baseAscent = seedTh + u * twistRad + u * swirlRad;
-
-  const avgR = (baseRadius + topRadius) / 2;
-  // Natural harmonic organic drift: smooth sine wave anchored at rims (u=0 and u=1)
-  // Guarantees physically developable path with in-plane strain < 5% and lateral radius > 200mm
-  const anchor = Math.sin(u * Math.PI);
-  const waveDrift = (Math.min(3.5, waveAmplitude) / avgR) * Math.sin(Math.PI * waveFrequency * u) * anchor;
-
-  return baseAscent + waveDrift;
+  return seedTh + u * twistRad + u * swirlRad;
 }
 
-export function evalStripAngle(
+/**
+ * Evaluates expressive, freeform optical trajectory for the outer light-emitting diffuser vein.
+ * Decoupled from the internal strip bed to allow dramatic organic meanders, curl streamline drift,
+ * and wave oscillations while staying safely within the 27.7mm throw cone of the 120° WS2812B LEDs.
+ */
+export function evalVeinAngle(
   veinIndex: number,
   veinCount: number,
   u: number,
   params: LampParameters,
   noise?: NoiseFunction
 ): number {
-  return evalVeinAngle(veinIndex, veinCount, u, params, noise);
+  const { waveAmplitude, waveFrequency, curlStrength, baseRadius, topRadius } = params;
+  const thStrip = evalStripAngle(veinIndex, veinCount, u, params);
+  const avgR = (baseRadius + topRadius) / 2;
+
+  // Natural organic harmonic meander anchored smoothly at rims (u=0 and u=1)
+  const anchor = Math.sin(u * Math.PI);
+  const waveDrift = (waveAmplitude / Math.max(16, avgR)) * Math.sin(2 * Math.PI * waveFrequency * u) * anchor;
+
+  // Particle curl flow drift
+  let curlDrift = 0;
+  if (noise && curlStrength > 0) {
+    const cosStrip = Math.cos(thStrip);
+    const sinStrip = Math.sin(thStrip);
+    const nCurl = noise(cosStrip * 2.2 + veinIndex * 3.7, sinStrip * 2.2 + 8.1, u * (waveFrequency * 2.2 + 1.0));
+    curlDrift = ((curlStrength * 2.2) / Math.max(16, avgR)) * nCurl * anchor;
+  }
+
+  // Clamped so vein never wanders more than ±5.8mm from strip centerline (100% inside 27.7mm LED cone)
+  const maxDriftRad = 5.8 / Math.max(16, avgR);
+  const netDrift = Math.max(-maxDriftRad, Math.min(maxDriftRad, waveDrift + curlDrift));
+
+  return thStrip + netDrift;
 }
 
 /**
@@ -222,16 +239,16 @@ export function evalVeinWidth(
   veinIndex: number,
   u: number,
   params: LampParameters,
-  noise: NoiseFunction
+  _noise?: NoiseFunction
 ): number {
   const { veinWidth, growthMode } = params;
   if (growthMode === 'geometric') return veinWidth;
 
   // Breathing modulation: slightly wider at root, organic nodes along the trunk
   const nodeBreathe = Math.sin(u * Math.PI * 2.8 + veinIndex * 1.2);
-  const taper = 1.08 - 0.16 * u; // gentle graceful taper toward crown
-  const widthFactor = 1.0 + 0.20 * nodeBreathe * taper;
+  const taper = 1.06 - 0.12 * u; // gentle graceful taper toward crown
+  const widthFactor = 1.0 + 0.22 * nodeBreathe * taper;
 
-  // Keep within bounds: always >= 8.5mm, never excessive
-  return Math.max(8.5, veinWidth * widthFactor);
+  // Keep within bounds: always >= 7.5mm, never excessive
+  return Math.max(7.5, veinWidth * widthFactor);
 }

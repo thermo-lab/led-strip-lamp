@@ -1,4 +1,5 @@
 export type VeinRelief = 'flush' | 'recessed' | 'proud';
+export type VeinPattern = 'continuous' | 'segmented';
 
 export interface LampParameters {
   // Overall Dimensions
@@ -25,6 +26,8 @@ export interface LampParameters {
   waveFrequency: number;      // Sine wave cycles over height (0.5 to 3.0)
   veinRelief: VeinRelief;     // Profile style: flush, recessed (-1.2mm), or proud (+1.2mm)
   diffuserThickness: number;  // Translucent wall thickness (mm), 0.8 - 1.6
+  veinPattern: VeinPattern;   // 'continuous' or 'segmented' (broken-up light windows)
+  veinSegments: number;       // Number of discrete light windows when segmented (3 to 8)
 
   // Aesthetics & Lighting Preview
   lightColor: string;         // Emissive glow color (hex)
