@@ -305,10 +305,10 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       });
     }
 
-    // Model ESP32-C6 SuperMini board in the base cradle
+    // Model ESP32-C6 SuperMini board nestled in dedicated compliant base cradle pocket
     const baseOuterR = baseRadius + 4.0;
     const boardGroup = new THREE.Group();
-    boardGroup.position.set(baseOuterR - 15.0, 0, -9.0);
+    boardGroup.position.set(baseOuterR - 16.75, 0, -11.6);
 
     const pcbGeo = new THREE.BoxGeometry(22.5, 18.0, 1.2);
     const pcbMat = new THREE.MeshStandardMaterial({ color: 0x081a30, roughness: 0.4 });
@@ -318,13 +318,13 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const shieldGeo = new THREE.BoxGeometry(11.0, 13.0, 2.2);
     const shieldMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.85, roughness: 0.25 });
     const shield = new THREE.Mesh(shieldGeo, shieldMat);
-    shield.position.set(-3.0, 0, 1.3);
+    shield.position.set(-3.0, 0, 1.7);
     boardGroup.add(shield);
 
     const usbGeo = new THREE.BoxGeometry(7.5, 9.0, 3.2);
     const usbMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.9, roughness: 0.2 });
     const usb = new THREE.Mesh(usbGeo, usbMat);
-    usb.position.set(11.0, 0, 1.2);
+    usb.position.set(10.5, 0, 2.2);
     boardGroup.add(usb);
 
     electronicsGroup.add(boardGroup);

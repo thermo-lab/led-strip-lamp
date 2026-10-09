@@ -392,22 +392,22 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     .subtract(allChambers);
 
   // 5. Add 3 Twist-Lock Bayonet Lugs to bottom collar projecting downward from Z=0 to Z=-5.0mm
-  const nLugs = 3;
+  // 5. Add 2 Diametrically Balanced Bayonet Lugs at 90 deg and 270 deg
+  // Symmetrically located 90 deg away from the board at theta=0, completely clear of all 3 vein funnels
   const lugSolids: any[] = [];
   const lugH = 5.0;
-  const lugThick = 2.5;
   const rCoreBase = getRCore(0);
   const rLugIn = rCoreBase - 2.5;
   const rLugOut = rCoreBase + 0.5;
+  const lugAngles = [Math.PI / 2, (3 * Math.PI) / 2];
+  const lugSpan = (28 * Math.PI) / 180;
 
-  for (let i = 0; i < nLugs; i++) {
-    const th = (i / nLugs) * 2 * Math.PI;
-    const span = (22 * Math.PI) / 180;
+  for (const th of lugAngles) {
     const pLug: [number, number][] = [
-      [rLugIn * Math.cos(th - span / 2), rLugIn * Math.sin(th - span / 2)],
-      [rLugOut * Math.cos(th - span / 2), rLugOut * Math.sin(th - span / 2)],
-      [rLugOut * Math.cos(th + span / 2), rLugOut * Math.sin(th + span / 2)],
-      [rLugIn * Math.cos(th + span / 2), rLugIn * Math.sin(th + span / 2)],
+      [rLugIn * Math.cos(th - lugSpan / 2), rLugIn * Math.sin(th - lugSpan / 2)],
+      [rLugOut * Math.cos(th - lugSpan / 2), rLugOut * Math.sin(th - lugSpan / 2)],
+      [rLugOut * Math.cos(th + lugSpan / 2), rLugOut * Math.sin(th + lugSpan / 2)],
+      [rLugIn * Math.cos(th + lugSpan / 2), rLugIn * Math.sin(th + lugSpan / 2)],
     ];
     const csLug = wasm.CrossSection.ofPolygons([pLug]);
     lugSolids.push(wasm.Manifold.extrude(csLug, lugH, 1, 0, [1, 1]).translate([0, 0, -lugH]));
@@ -417,24 +417,35 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     opaqueBody = opaqueBody.add(lugs);
   }
 
-  // 6. Electronics Base Cradle (Part 3) with matching female bayonet twist-lock channels
+  // 6. Electronics Base Cradle (Part 3) with Discrete Bayonet Bosses and Dedicated Compliant ESP32-C6 Mount
   const baseH = 14.0;
   const baseOuterR = baseRadius + 4.0;
   const baseOuterCyl = wasm.Manifold.cylinder(baseH, baseOuterR, baseOuterR, 64);
-  const wireHole = wasm.Manifold.cylinder(baseH + 2, 12.0, 12.0, 32).translate([0, 0, -1]);
-  const pcbCavity = wasm.Manifold.cylinder(9.0, 46.5, 46.5, 64).translate([0, 0, baseH - 9.0]);
-  const hubRim = wasm.Manifold.cylinder(baseH, rCoreBase + 0.5, rCoreBase + 0.5, 64)
-    .subtract(wasm.Manifold.cylinder(baseH + 2, rCoreBase - 3.5, rCoreBase - 3.5, 64).translate([0, 0, -1]));
+  const wireHole = wasm.Manifold.cylinder(baseH + 2, 13.0, 13.0, 32).translate([0, 0, -1]);
+  // Open interior electronics cavity (floor at Z = 2.5mm, depth 11.5mm)
+  const cavity = wasm.Manifold.cylinder(baseH - 2.5, 46.5, 46.5, 64).translate([0, 0, 2.5]);
 
-  let baseSolid = baseOuterCyl.subtract(wireHole).subtract(pcbCavity).add(hubRim);
-
-  // Female bayonet entry slots and horizontal locking undercuts
+  // Two discrete female bayonet receptor bosses at 90 deg and 270 deg (completely absent from board bay at 0 deg)
+  const bossSolids: any[] = [];
   const bayonetCuts: any[] = [];
-  for (let i = 0; i < nLugs; i++) {
-    const th = (i / nLugs) * 2 * Math.PI;
-    const rCutIn = rLugIn - 0.5;
-    const rCutOut = rLugOut + 0.8;
-    const slotSpan = (28 * Math.PI) / 180;
+  const rCutIn = rLugIn - 0.5;
+  const rCutOut = rLugOut + 0.8;
+  const slotSpan = (34 * Math.PI) / 180;
+  const twistSpan = (42 * Math.PI) / 180;
+  const bossSpan = (62 * Math.PI) / 180;
+
+  for (const th of lugAngles) {
+    // Solid receptor boss block
+    const pBoss: [number, number][] = [
+      [(rLugIn - 2.0) * Math.cos(th - (16 * Math.PI) / 180), (rLugIn - 2.0) * Math.sin(th - (16 * Math.PI) / 180)],
+      [(rLugOut + 2.5) * Math.cos(th - (16 * Math.PI) / 180), (rLugOut + 2.5) * Math.sin(th - (16 * Math.PI) / 180)],
+      [(rLugOut + 2.5) * Math.cos(th + bossSpan - (16 * Math.PI) / 180), (rLugOut + 2.5) * Math.sin(th + bossSpan - (16 * Math.PI) / 180)],
+      [(rLugIn - 2.0) * Math.cos(th + bossSpan - (16 * Math.PI) / 180), (rLugIn - 2.0) * Math.sin(th + bossSpan - (16 * Math.PI) / 180)],
+    ];
+    const csBoss = wasm.CrossSection.ofPolygons([pBoss]);
+    bossSolids.push(wasm.Manifold.extrude(csBoss, baseH - 2.5, 1, 0, [1, 1]).translate([0, 0, 2.5]));
+
+    // Vertical entry notch: drops 5.8mm down from top
     const pEntry: [number, number][] = [
       [rCutIn * Math.cos(th - slotSpan / 2), rCutIn * Math.sin(th - slotSpan / 2)],
       [rCutOut * Math.cos(th - slotSpan / 2), rCutOut * Math.sin(th - slotSpan / 2)],
@@ -444,7 +455,7 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     const csEntry = wasm.CrossSection.ofPolygons([pEntry]);
     bayonetCuts.push(wasm.Manifold.extrude(csEntry, 5.8, 1, 0, [1, 1]).translate([0, 0, baseH - 5.8]));
 
-    const twistSpan = (38 * Math.PI) / 180;
+    // Horizontal twist-locking channel: rotates clockwise into the boss block
     const pTwist: [number, number][] = [
       [rCutIn * Math.cos(th - slotSpan / 2), rCutIn * Math.sin(th - slotSpan / 2)],
       [rCutOut * Math.cos(th - slotSpan / 2), rCutOut * Math.sin(th - slotSpan / 2)],
@@ -454,17 +465,61 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     const csTwist = wasm.CrossSection.ofPolygons([pTwist]);
     bayonetCuts.push(wasm.Manifold.extrude(csTwist, 3.2, 1, 0, [1, 1]).translate([0, 0, baseH - 5.8]));
   }
+
+  const allBosses = wasm.Manifold.union(bossSolids);
   const allBayonetCuts = wasm.Manifold.union(bayonetCuts);
 
-  // ESP32-C6 SuperMini Pocket & USB-C Portal
-  const espPocket = wasm.Manifold.cube([23.5, 18.5, 5.0], true).translate([baseOuterR - 15.0, 0, 4.0]);
-  const usbPortal = wasm.Manifold.cube([18.0, 10.5, 4.8], true).translate([baseOuterR - 4.0, 0, 4.0]);
+  let baseSolid = baseOuterCyl
+    .subtract(wireHole)
+    .subtract(cavity)
+    .add(allBosses)
+    .subtract(allBayonetCuts);
 
-  const baseCradle = baseSolid
-    .subtract(allBayonetCuts)
+  // Dedicated ESP32-C6 SuperMini Compliant Mounting Bay at theta=0 (+X)
+  const boardCenter = [baseOuterR - 16.75, 0];
+  const pcbLength = 22.8;
+  const pcbWidth = 18.4;
+
+  // A. Recessed pocket in floor (depth 1.4mm into 2.5mm floor)
+  const espPocket = wasm.Manifold.cube([pcbLength, pcbWidth, 1.6], true)
+    .translate([boardCenter[0], 0, 2.5 - 0.8 + 0.1]);
+
+  // B. Precision USB-C portal through outer perimeter wall
+  const usbPortal = wasm.Manifold.cube([18.0, 12.0, 6.5], true)
+    .translate([baseOuterR - 4.0, 0, 4.2]);
+
+  // C. Rear wire routing corridor and finger pry notch at inner edge
+  const rearRelief = wasm.Manifold.cylinder(4.0, 5.5, 5.5, 32)
+    .translate([boardCenter[0] - pcbLength / 2, 0, 1.5]);
+
+  // D. Compliant Snap-Fit Latches (Pair of lateral cantilever clips with 30-deg lead-in & 10-deg undercut)
+  const snapArmL = wasm.Manifold.cube([4.0, 1.6, 3.8], true)
+    .translate([boardCenter[0], (pcbWidth / 2) + 0.8, 2.5 + 1.9]);
+  const snapHookL = wasm.Manifold.cube([3.0, 0.7, 1.0], true)
+    .translate([boardCenter[0], (pcbWidth / 2) - 0.1, 2.5 + 1.6]);
+
+  const snapArmR = wasm.Manifold.cube([4.0, 1.6, 3.8], true)
+    .translate([boardCenter[0], -(pcbWidth / 2) - 0.8, 2.5 + 1.9]);
+  const snapHookR = wasm.Manifold.cube([3.0, 0.7, 1.0], true)
+    .translate([boardCenter[0], -(pcbWidth / 2) + 0.1, 2.5 + 1.6]);
+
+  const reliefSlotL = wasm.Manifold.cube([6.0, 1.2, 4.0], true)
+    .translate([boardCenter[0], (pcbWidth / 2) + 2.0, 2.5 + 2.0]);
+  const reliefSlotR = wasm.Manifold.cube([6.0, 1.2, 4.0], true)
+    .translate([boardCenter[0], -(pcbWidth / 2) - 2.0, 2.5 + 2.0]);
+
+  baseSolid = baseSolid
     .subtract(espPocket)
     .subtract(usbPortal)
-    .translate([0, 0, -baseH]);
+    .subtract(rearRelief)
+    .add(snapArmL)
+    .add(snapHookL)
+    .add(snapArmR)
+    .add(snapHookR)
+    .subtract(reliefSlotL)
+    .subtract(reliefSlotR);
+
+  const baseCradle = baseSolid.translate([0, 0, -baseH]);
 
   const toMeshData = (solid: any): MeshData => {
     const raw = solid.getMesh();
