@@ -225,7 +225,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const noise = createNoise3D(params.organicSeed ?? 42);
 
     // Build strip segments for each vein along the 10.8mm captive channel bed
-    const nSegments = 36;
+    // Match nSlices = 100 exactly for 1-to-1 vertex correspondence with CAD pocket
+    const nSegments = 100;
     for (let v = 0; v < veinCount; v++) {
       const stripVerts: number[] = [];
       const stripIndices: number[] = [];
@@ -234,10 +235,10 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const u = s / nSegments;
         const z = u * height;
         const rNom = getRNom(u);
-        const rFront = rNom - diffuserThickness + 0.15;
-        const rLip = rFront - 2.4;
+        const rLip = (rNom - diffuserThickness) - 1.5;
         const rSlotTop = rLip - 1.0;
-        const rTrack = rSlotTop - 1.4; // Seated flush on the 10.8mm channel bed floor
+        const rBed = rSlotTop - 1.4;
+        const rTrack = rBed + 0.15; // 0.15mm off channel bed floor for tape thickness
 
         const thStrip = evalStripAngle(v, veinCount, u, params);
         const [cx, cy] = evalOrganicCenter(u, params, noise);
@@ -347,7 +348,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const rNom = (1 - uMid) * params.baseRadius + uMid * params.topRadius +
       4 * uMid * (1 - uMid) * ((params.waistRatio - 1) * (params.baseRadius + params.topRadius) * 0.5);
     const rFront = rNom - params.diffuserThickness + 0.15;
-    const rLip = rFront - 2.4;
+    const rLip = (rNom - params.diffuserThickness) - 1.5;
     const rSlotTop = rLip - 1.0;
     const rBed = rSlotTop - 1.4;
 
@@ -378,13 +379,13 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     contourLine.renderOrder = 999;
     helperGroup.add(contourLine);
 
-    // White outline of the seated 10mm flex strip
+    // White outline of the seated 10mm flex strip (0.35mm thickness seated at rBed + 0.15)
     const stripPoints = [
-      new THREE.Vector3(0, rBed + 0.05, zMid - 5.0),
-      new THREE.Vector3(0, rBed + 0.05, zMid + 5.0),
-      new THREE.Vector3(0, rBed + 0.45, zMid + 5.0),
-      new THREE.Vector3(0, rBed + 0.45, zMid - 5.0),
-      new THREE.Vector3(0, rBed + 0.05, zMid - 5.0),
+      new THREE.Vector3(0, rBed + 0.15, zMid - 5.0),
+      new THREE.Vector3(0, rBed + 0.15, zMid + 5.0),
+      new THREE.Vector3(0, rBed + 0.50, zMid + 5.0),
+      new THREE.Vector3(0, rBed + 0.50, zMid - 5.0),
+      new THREE.Vector3(0, rBed + 0.15, zMid - 5.0),
     ];
     const stripGeo = new THREE.BufferGeometry().setFromPoints(stripPoints);
     const stripMat = new THREE.LineBasicMaterial({
@@ -469,6 +470,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           mat.emissiveIntensity = isNight ? intensity * 2.2 : 0.8;
           mat.roughness = isNight ? 0.25 : 0.45;
         }
+        mat.needsUpdate = true;
       }
     });
 

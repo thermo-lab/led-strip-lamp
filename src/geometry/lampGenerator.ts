@@ -100,7 +100,7 @@ function buildSweptDiffuserMesh(
   const { height, diffuserThickness, veinRelief } = params;
   const verts: number[] = [];
   const tris: number[] = [];
-  const nArcSteps = 4;
+  const nArcSteps = 8; // High-resolution smooth arc (was 4)
   const ptsPerRing = (nArcSteps + 1) * 2;
   const nVeinSlices = sMax - sMin;
 
@@ -166,7 +166,7 @@ function buildSweptDiffuserMesh(
  * 1. 10.8mm wide recessed bed for 10.0mm WS2812B flex strip (+0.4mm slip clearance per side)
  * 2. 1.8mm tall pocket guide sidewalls
  * 3. Bilateral 45° overhang retaining lips (1.7mm overhang each side) restricting aperture to 7.4mm
- * 4. Forward optical mixing chamber flaring to outer vein window
+ * 4. Forward optical mixing chamber flaring to outer vein window with matching 8-arc curvature
  */
 function buildCaptiveChamberMesh(
   nSlices: number,
@@ -184,7 +184,8 @@ function buildCaptiveChamberMesh(
   const verts: number[] = [];
   const tris: number[] = [];
   const nVeinSlices = sMax - sMin;
-  const nProfilePts = 8;
+  const nArcSteps = 8; // Matches diffuser arc steps!
+  const nProfilePts = (nArcSteps + 1) + 6; // 9 front arc + 3 right + 3 left = 15 pts
 
   for (let s = sMin; s <= sMax; s++) {
     const u = s / nSlices;
@@ -194,7 +195,6 @@ function buildCaptiveChamberMesh(
     const thVein = evalVeinAngle(veinIndex, veinCount, u, params, noise);
     const thStrip = evalStripAngle(veinIndex, veinCount, u, params);
     const rOuter = evalOrganicRadius(u, thVein, rNom, params, noise);
-    const rCore = getRCore(u);
     const wVein = evalVeinWidth(veinIndex, u, params, noise);
 
     const rFront = rOuter - diffuserThickness + 0.15;
@@ -202,28 +202,34 @@ function buildCaptiveChamberMesh(
     const rSlotTop = rLip - 1.0;
     const rBed = rSlotTop - 1.4;
 
-    const dThFrontHalf = (wVein + 0.4) / (2 * Math.max(16, rFront));
+    const dThFront = (wVein + 0.4) / Math.max(16, rFront);
     const dThSlotHalf = 5.4 / Math.max(16, rSlotTop); // 10.8mm slot
     const dThLipHalf = 3.7 / Math.max(16, rLip);      // 7.4mm aperture (1.7mm retaining lips)
 
-    // p0: Front left
-    verts.push(cx + rFront * Math.cos(thVein - dThFrontHalf), cy + rFront * Math.sin(thVein - dThFrontHalf), z);
-    // p1: Front right
-    verts.push(cx + rFront * Math.cos(thVein + dThFrontHalf), cy + rFront * Math.sin(thVein + dThFrontHalf), z);
-    // p2: Lip right
+    // 1. Front window arc (matching diffuser interface curvature)
+    for (let i = 0; i <= nArcSteps; i++) {
+      const th = thVein - dThFront / 2 + (i / nArcSteps) * dThFront;
+      verts.push(cx + rFront * Math.cos(th), cy + rFront * Math.sin(th), z);
+    }
+
+    // 2. Right stepped shoulder & slot pocket:
+    // Lip right
     verts.push(cx + rLip * Math.cos(thStrip + dThLipHalf), cy + rLip * Math.sin(thStrip + dThLipHalf), z);
-    // p3: Slot top right
+    // Slot top right
     verts.push(cx + rSlotTop * Math.cos(thStrip + dThSlotHalf), cy + rSlotTop * Math.sin(thStrip + dThSlotHalf), z);
-    // p4: Bed right
+    // Bed right
     verts.push(cx + rBed * Math.cos(thStrip + dThSlotHalf), cy + rBed * Math.sin(thStrip + dThSlotHalf), z);
-    // p5: Bed left
+
+    // 3. Left stepped shoulder & slot pocket:
+    // Bed left
     verts.push(cx + rBed * Math.cos(thStrip - dThSlotHalf), cy + rBed * Math.sin(thStrip - dThSlotHalf), z);
-    // p6: Slot top left
+    // Slot top left
     verts.push(cx + rSlotTop * Math.cos(thStrip - dThSlotHalf), cy + rSlotTop * Math.sin(thStrip - dThSlotHalf), z);
-    // p7: Lip left
+    // Lip left
     verts.push(cx + rLip * Math.cos(thStrip - dThLipHalf), cy + rLip * Math.sin(thStrip - dThLipHalf), z);
   }
 
+  // Connect quad-strip side walls between slices
   for (let s = 0; s < nVeinSlices; s++) {
     const r0 = s * nProfilePts;
     const r1 = (s + 1) * nProfilePts;
@@ -234,16 +240,28 @@ function buildCaptiveChamberMesh(
     }
   }
 
-  // Bottom cap (-Z)
-  tris.push(0, 7, 2); tris.push(0, 2, 1);
-  tris.push(7, 6, 3); tris.push(7, 3, 2);
-  tris.push(6, 5, 4); tris.push(6, 4, 3);
+  // Bottom cap (-Z): add center point
+  const botCenterIdx = verts.length / 3;
+  const [bcx, bcy] = centerFn(sMin / nSlices);
+  const bThStrip = evalStripAngle(veinIndex, veinCount, sMin / nSlices, params);
+  const brLip = (getRNom(sMin / nSlices) - params.diffuserThickness) - 1.5;
+  verts.push(bcx + brLip * Math.cos(bThStrip), bcy + brLip * Math.sin(bThStrip), (sMin / nSlices) * height);
+  for (let i = 0; i < nProfilePts; i++) {
+    const next = (i + 1) % nProfilePts;
+    tris.push(botCenterIdx, next, i);
+  }
 
-  // Top cap (+Z)
+  // Top cap (+Z): add center point
+  const topCenterIdx = verts.length / 3;
+  const [tcx, tcy] = centerFn(sMax / nSlices);
+  const tThStrip = evalStripAngle(veinIndex, veinCount, sMax / nSlices, params);
+  const trLip = (getRNom(sMax / nSlices) - params.diffuserThickness) - 1.5;
+  verts.push(tcx + trLip * Math.cos(tThStrip), tcy + trLip * Math.sin(tThStrip), (sMax / nSlices) * height);
   const top0 = nVeinSlices * nProfilePts;
-  tris.push(top0 + 0, top0 + 2, top0 + 7); tris.push(top0 + 0, top0 + 1, top0 + 2);
-  tris.push(top0 + 7, top0 + 3, top0 + 6); tris.push(top0 + 7, top0 + 2, top0 + 3);
-  tris.push(top0 + 6, top0 + 4, top0 + 5); tris.push(top0 + 6, top0 + 3, top0 + 4);
+  for (let i = 0; i < nProfilePts; i++) {
+    const next = (i + 1) % nProfilePts;
+    tris.push(topCenterIdx, top0 + i, top0 + next);
+  }
 
   return { vertProperties: new Float32Array(verts), triVerts: new Uint32Array(tris), numProp: 3 };
 }
@@ -271,8 +289,8 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
 
   const noise = createNoise3D(organicSeed ?? 42);
 
-  const nSlices = 64;
-  const nPts = 96;
+  const nSlices = 100;
+  const nPts = 120;
 
   const centerFn = (u: number): [number, number] => {
     return evalOrganicCenter(u, params, noise);
@@ -282,11 +300,11 @@ export function generateLampGeometry(wasm: any, params: LampParameters): LampPar
     return (1 - u) * baseRadius + u * topRadius + 4 * u * (1 - u) * ((waistRatio - 1) * (baseRadius + topRadius) * 0.5);
   };
 
-  // Guaranteed Core Radius: clean inner frustum with finger clearance (diameter >= 44mm)
-  // Wall thickness is guaranteed >= 5.0mm everywhere around the entire circumference
+  // Guaranteed Core Radius: clean inner frustum with finger clearance (diameter >= 40mm)
+  // Solid backing wall behind 10.8mm captive C-channel is guaranteed >= 2.5mm everywhere
   const getRCore = (u: number): number => {
     const rNom = getRNom(u);
-    return Math.max(22.0, rNom - 9.0);
+    return Math.max(20.0, rNom - 9.0);
   };
 
   // 1. Full Outer Organic Solid (continuous lofted mesh)

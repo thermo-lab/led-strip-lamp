@@ -57,7 +57,7 @@ export function computeStripPhysicalMetrics(params: LampParameters): StripPhysic
     return (dNom_linear + dNom_waist) / height;
   };
 
-  const getRCore = (u: number): number => Math.max(22.0, getRNom(u) - 9.0);
+  const getRCore = (u: number): number => Math.max(20.0, getRNom(u) - 9.0);
 
   // Smooth helical strip carrier angle
   const twistRad = (twistAngle * Math.PI) / 180;
@@ -76,10 +76,10 @@ export function computeStripPhysicalMetrics(params: LampParameters): StripPhysic
     const u = sMin + t * (sMax - sMin);
     const z = u * height;
     const rNom = getRNom(u);
-    const rFront = rNom - params.diffuserThickness + 0.15;
-    const rLip = rFront - 2.4;
+    const rLip = (rNom - params.diffuserThickness) - 1.5;
     const rSlotTop = rLip - 1.0;
-    const rTrack = rSlotTop - 1.4; // Seated on recessed channel bed floor
+    const rBed = rSlotTop - 1.4;
+    const rTrack = rBed + 0.15; // 0.15mm off channel bed floor
     const th = t * totalAscent;
 
     points.push({
