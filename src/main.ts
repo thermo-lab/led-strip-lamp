@@ -5,17 +5,28 @@ import { export3MF } from './export/threemfExport';
 import { exportSTL } from './export/stlExport';
 
 const defaultParams: LampParameters = {
-  height: 175,
-  baseRadius: 48,
-  topRadius: 36,
-  waistRatio: 0.82,
+  lampArchetype: 'clouds', // Default to the new Fluffy Cloud Column variant
+  height: 180,
+  baseRadius: 44,
+  topRadius: 38,
+  waistRatio: 0.92,
   wallThickness: 4.8,
-  twistAngle: 75,
+  twistAngle: 0,
 
+  // Cloud Column Parameters
+  cloudPuffDensity: 36,
+  cloudPuffDepth: 8.5,
+  cloudMinThickness: 0.95,
+  cloudMaxThickness: 4.8,
+  cloudTurbulence: 1.3,
+  cloudRimLighting: 1.6,
+  cloudColumnFacets: 3,
+
+  // Organic Veined Lamp Parameters
   growthMode: 'organic',
   surfaceStyle: 'fluted',
   reliefDepth: 2.8,
-  organicSeed: 42,
+  organicSeed: 77,
   curlStrength: 2.2,
   surfaceNoise: 1.6,
 
@@ -33,9 +44,9 @@ const defaultParams: LampParameters = {
   veinSegments: 5,
 
   lightColor: '#ff9d3b', // Warm amber / candlelight 2400K
-  lightIntensity: 1.2,
-  bodyColor: '#5a6578',  // Medium slate grey
-  diffuserColor: '#f8fafc', // Translucent SnapSpeed PLA white
+  lightIntensity: 1.3,
+  bodyColor: '#2d3748',  // Tech anthracite for base and central spine
+  diffuserColor: '#ffffff', // Pure white SnapSpeed PLA
 };
 
 // Application state
@@ -91,7 +102,10 @@ const ui = setupUI(defaultParams, {
   },
   onExport3MF() {
     if (currentParts.length === 0) return;
-    export3MF(currentParts, `assembled_led_lamp_${latestParams.veinCount}veins.3mf`);
+    const filename = latestParams.lampArchetype === 'clouds'
+      ? `fluffy_cloud_column_lamp_${latestParams.cloudColumnFacets ?? 3}strips.3mf`
+      : `assembled_led_lamp_${latestParams.veinCount}veins.3mf`;
+    export3MF(currentParts, filename);
   },
   onExportSTL(partId) {
     const part = currentParts.find((p) => p.id === partId);

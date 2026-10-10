@@ -1,8 +1,11 @@
 export type VeinRelief = 'flush' | 'recessed' | 'proud';
 export type VeinPattern = 'continuous' | 'segmented';
 export type SurfaceStyle = 'fluted' | 'strata' | 'basalt' | 'organic';
+export type LampArchetype = 'veins' | 'clouds';
 
 export interface LampParameters {
+  lampArchetype?: LampArchetype; // 'veins' (default organic veined lamp) or 'clouds' (lithophane cloud column)
+
   // Overall Dimensions
   height: number;             // Total height of monolithic shade (mm), 120 - 240
   baseRadius: number;         // Outer radius at base (mm), 35 - 65
@@ -20,6 +23,15 @@ export interface LampParameters {
   surfaceNoise: number;       // Biomimetic surface displacement (mm), 0 to 4.0
   fluteCount: number;         // Outer fluted ribs (0 to 32)
   fluteDepth: number;         // Depth of fluted ridges (mm), 0 to 4.0
+
+  // Cloud Column Morphology (when lampArchetype === 'clouds')
+  cloudPuffDensity?: number;    // Number of puff clusters (20 to 50)
+  cloudPuffDepth?: number;      // Puff bulge amplitude in mm (4.0 to 14.0 mm)
+  cloudMinThickness?: number;  // Lithophane min thickness for highlights (0.8 to 1.6 mm)
+  cloudMaxThickness?: number;  // Lithophane max thickness for shadows (3.0 to 6.0 mm)
+  cloudTurbulence?: number;    // Micro-fibrous cloud fluff noise (0.0 to 2.5 mm)
+  cloudColumnFacets?: number;  // Number of strip mounting facets on central pillar (3 or 4)
+  cloudRimLighting?: number;   // Rim lighting halo intensity at cloud clump edges (0.0 to 2.5)
 
   // Light Vein Dynamics
   veinCount: number;          // Number of graceful light-emitting curves (2 to 8)

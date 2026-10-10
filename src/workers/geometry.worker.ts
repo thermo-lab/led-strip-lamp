@@ -1,6 +1,7 @@
 import Module from 'manifold-3d';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
 import { generateLampGeometry } from '../geometry/lampGenerator';
+import { generateCloudLampGeometry } from '../geometry/cloudGenerator';
 import { calculateMetrics } from '../geometry/metrics';
 import type { GeometryRequest, GeometryResponse } from '../types';
 
@@ -25,7 +26,10 @@ self.onmessage = async (e: MessageEvent<GeometryRequest>) => {
     const msg = e.data;
 
     if (msg.type === 'generate') {
-      const parts = generateLampGeometry(wasm, msg.params);
+      const isClouds = msg.params.lampArchetype === 'clouds';
+      const parts = isClouds
+        ? generateCloudLampGeometry(wasm, msg.params)
+        : generateLampGeometry(wasm, msg.params);
       const metrics = calculateMetrics(msg.params);
 
       // Collect typed array buffers to transfer zero-copy to UI thread

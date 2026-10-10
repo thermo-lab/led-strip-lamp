@@ -222,14 +222,61 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const ledBoxGeo = new THREE.BoxGeometry(4.8, 1.4, 4.8);
     const dieBoxGeo = new THREE.BoxGeometry(2.6, 0.4, 2.6);
 
-    const noise = createNoise3D(params.organicSeed ?? 42);
+    // Build strip segments based on archetype
+    if (params.lampArchetype === 'clouds') {
+      const nFacets = params.cloudColumnFacets ?? 3;
+      const colRadius = nFacets === 3 ? 18.0 : 16.0;
+      const colH = height - 10.0;
+      const facetAngleStep = (2 * Math.PI) / nFacets;
+      const apothem = colRadius * Math.cos(facetAngleStep / 2);
 
-    // Build strip segments for each vein along the 10.8mm captive channel bed
-    // Match nSlices = 100 exactly for 1-to-1 vertex correspondence with CAD pocket
-    const nSegments = 100;
-    for (let v = 0; v < veinCount; v++) {
-      const stripVerts: number[] = [];
-      const stripIndices: number[] = [];
+      for (let f = 0; f < nFacets; f++) {
+        const thFacet = f * facetAngleStep + facetAngleStep / 2;
+        const stripW = 10.0;
+        const stripH = colH - 12.0;
+
+        // Plane strip facing outwards
+        const stripGeo = new THREE.PlaneGeometry(stripW, stripH);
+        const stripMesh = new THREE.Mesh(stripGeo, stripTapeMat);
+        stripMesh.position.set(
+          (apothem + 0.15) * Math.cos(thFacet),
+          (apothem + 0.15) * Math.sin(thFacet),
+          colH / 2 + 2.0
+        );
+        stripMesh.rotation.z = thFacet - Math.PI / 2;
+        stripMesh.rotation.x = Math.PI / 2;
+        electronicsGroup.add(stripMesh);
+
+        // Place LEDs at 16.6667mm pitch
+        const nLeds = Math.max(1, Math.floor((colH - 16) / 16.67));
+        for (let i = 0; i < nLeds; i++) {
+          const zLed = 10.0 + i * 16.67;
+          const ledMesh = new THREE.Mesh(ledBoxGeo, ledBodyMat);
+          ledMesh.position.set(
+            (apothem + 0.85) * Math.cos(thFacet),
+            (apothem + 0.85) * Math.sin(thFacet),
+            zLed
+          );
+          ledMesh.rotation.z = thFacet - Math.PI / 2;
+          electronicsGroup.add(ledMesh);
+
+          const dieMesh = new THREE.Mesh(dieBoxGeo, ledDieMat);
+          dieMesh.position.set(
+            (apothem + 1.55) * Math.cos(thFacet),
+            (apothem + 1.55) * Math.sin(thFacet),
+            zLed
+          );
+          dieMesh.rotation.z = thFacet - Math.PI / 2;
+          electronicsGroup.add(dieMesh);
+        }
+      }
+    } else {
+      const noise = createNoise3D(params.organicSeed ?? 42);
+      // Build strip segments for each vein along the 10.8mm captive channel bed
+      const nSegments = 100;
+      for (let v = 0; v < veinCount; v++) {
+        const stripVerts: number[] = [];
+        const stripIndices: number[] = [];
 
       for (let s = 0; s <= nSegments; s++) {
         const u = s / nSegments;
@@ -304,8 +351,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         electronicsGroup.add(dieMesh);
       });
     }
+  }
 
-    // Model ESP32-C6 SuperMini board nestled in dedicated compliant base cradle pocket
+  // Model ESP32-C6 SuperMini board nestled in dedicated compliant base cradle pocket
     const baseOuterR = baseRadius + 4.0;
     const boardGroup = new THREE.Group();
     boardGroup.position.set(baseOuterR - 16.75, 0, -11.6);
@@ -351,70 +399,87 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     const bx = baseOuterR - 16.75;
     const bz = -10.4;
-    const rSlotTop0 = (baseRadius - diffuserThickness) - 1.5 - 1.0;
-    const rTrack0 = (rSlotTop0 - 2.0) + 0.15;
 
-    for (let v = 0; v < veinCount; v++) {
-      const th0 = evalStripAngle(v, veinCount, 0, params);
-      const [fcx, fcy] = evalOrganicCenter(0, params, noise);
-      const startX = fcx + rTrack0 * Math.cos(th0);
-      const startY = fcy + rTrack0 * Math.sin(th0);
-
-      // Target pin header connection point on ESP32 board for this vein
-      let targetX = bx - 6.0;
-      let targetY = 0;
-      if (v === 0) {
-        targetY = 6.8; // +Y header row
-      } else if (v === 2) {
-        targetY = -6.8; // -Y header row
-      } else {
-        targetX = bx - 10.5; // Rear center notch
-        targetY = 0;
-      }
-
-      // Generate 3 parallel individual conductor tubes per vein
+    if (params.lampArchetype === 'clouds') {
+      // Connect wires from center column socket to ESP32 board
       for (let w = 0; w < 3; w++) {
         const off = wireOffsets[w];
-        // Perpendicular lateral normal in XY
-        const nx = -Math.sin(th0) * off;
-        const ny = Math.cos(th0) * off;
-
-        const p0 = new THREE.Vector3(startX + nx, startY + ny, 0.2);
-        // Drops through flared funnel mouth at Z=0 down to Z=-5.0mm
-        const p1 = new THREE.Vector3(
-          fcx + (rTrack0 - 3.5) * Math.cos(th0) + nx,
-          fcy + (rTrack0 - 3.5) * Math.sin(th0) + ny,
-          -5.0
-        );
-        // Follows the floor raceway at Z=-11.4mm
-        const p2 = new THREE.Vector3(
-          20.0 * Math.cos(th0) + nx * 0.7,
-          20.0 * Math.sin(th0) + ny * 0.7,
-          -11.4
-        );
-        // Merges into central wiring hub basin
-        const p3 = new THREE.Vector3(
-          7.0 * Math.cos(th0),
-          7.0 * Math.sin(th0),
-          -11.4
-        );
-        // Routes through forward conduit trunk toward board
-        const p4 = new THREE.Vector3(
-          16.0,
-          targetY * 0.45,
-          -11.4
-        );
-        // Plugs securely into ESP32 board header pin
-        const p5 = new THREE.Vector3(
-          targetX,
-          targetY + off * 0.5,
-          bz
-        );
-
-        const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3, p4, p5]);
-        const wireGeo = new THREE.TubeGeometry(curve, 36, 0.32, 8, false);
+        const p0 = new THREE.Vector3(0, off, -2.5);
+        const p1 = new THREE.Vector3(8.0, off * 0.8, -11.4);
+        const p2 = new THREE.Vector3(18.0, off * 0.5, -11.4);
+        const p3 = new THREE.Vector3(bx - 6.0, off * 0.5, bz);
+        const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3]);
+        const wireGeo = new THREE.TubeGeometry(curve, 24, 0.35, 8, false);
         const wireMesh = new THREE.Mesh(wireGeo, wireMaterials[w]);
         electronicsGroup.add(wireMesh);
+      }
+    } else {
+      const noise = createNoise3D(params.organicSeed ?? 42);
+      const rSlotTop0 = (baseRadius - diffuserThickness) - 1.5 - 1.0;
+      const rTrack0 = (rSlotTop0 - 2.0) + 0.15;
+
+      for (let v = 0; v < veinCount; v++) {
+        const th0 = evalStripAngle(v, veinCount, 0, params);
+        const [fcx, fcy] = evalOrganicCenter(0, params, noise);
+        const startX = fcx + rTrack0 * Math.cos(th0);
+        const startY = fcy + rTrack0 * Math.sin(th0);
+
+        // Target pin header connection point on ESP32 board for this vein
+        let targetX = bx - 6.0;
+        let targetY = 0;
+        if (v === 0) {
+          targetY = 6.8; // +Y header row
+        } else if (v === 2) {
+          targetY = -6.8; // -Y header row
+        } else {
+          targetX = bx - 10.5; // Rear center notch
+          targetY = 0;
+        }
+
+        // Generate 3 parallel individual conductor tubes per vein
+        for (let w = 0; w < 3; w++) {
+          const off = wireOffsets[w];
+          // Perpendicular lateral normal in XY
+          const nx = -Math.sin(th0) * off;
+          const ny = Math.cos(th0) * off;
+
+          const p0 = new THREE.Vector3(startX + nx, startY + ny, 0.2);
+          // Drops through flared funnel mouth at Z=0 down to Z=-5.0mm
+          const p1 = new THREE.Vector3(
+            fcx + (rTrack0 - 3.5) * Math.cos(th0) + nx,
+            fcy + (rTrack0 - 3.5) * Math.sin(th0) + ny,
+            -5.0
+          );
+          // Follows the floor raceway at Z=-11.4mm
+          const p2 = new THREE.Vector3(
+            20.0 * Math.cos(th0) + nx * 0.7,
+            20.0 * Math.sin(th0) + ny * 0.7,
+            -11.4
+          );
+          // Merges into central wiring hub basin
+          const p3 = new THREE.Vector3(
+            7.0 * Math.cos(th0),
+            7.0 * Math.sin(th0),
+            -11.4
+          );
+          // Routes through forward conduit trunk toward board
+          const p4 = new THREE.Vector3(
+            16.0,
+            targetY * 0.45,
+            -11.4
+          );
+          // Plugs securely into ESP32 board header pin
+          const p5 = new THREE.Vector3(
+            targetX,
+            targetY + off * 0.5,
+            bz
+          );
+
+          const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3, p4, p5]);
+          const wireGeo = new THREE.TubeGeometry(curve, 36, 0.32, 8, false);
+          const wireMesh = new THREE.Mesh(wireGeo, wireMaterials[w]);
+          electronicsGroup.add(wireMesh);
+        }
       }
     }
 
@@ -541,40 +606,75 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       mat.clippingPlanes = isCutaway ? [clipPlane] : [];
       mat.clipShadows = true;
 
-      if (id === 'veins') {
-        if (isCutaway) {
-          if (currentDiffuserMode === 'hidden') {
-            mesh.visible = false;
-          } else if (currentDiffuserMode === 'ghost') {
-            mesh.visible = true;
-            mat.transparent = true;
-            mat.opacity = 0.35;
-            mat.roughness = 0.15;
-            mat.depthWrite = false;
-            mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.3);
+      if (activeParams?.lampArchetype === 'clouds') {
+        if (id === 'body') {
+          // Cloud shade
+          if (isCutaway) {
+            mesh.visible = currentDiffuserMode !== 'hidden';
+            mat.transparent = currentDiffuserMode === 'ghost';
+            mat.opacity = currentDiffuserMode === 'ghost' ? 0.35 : 1.0;
+            mat.depthWrite = currentDiffuserMode !== 'ghost';
+            mat.color = new THREE.Color('#ffffff');
             mat.emissive = lColor;
-            mat.emissiveIntensity = 0.8;
+            mat.emissiveIntensity = 0.45;
           } else {
-            // solid
+            mesh.visible = true;
+            mat.transparent = false;
+            mat.opacity = 1.0;
+            mat.depthWrite = true;
+            mat.color = new THREE.Color('#ffffff');
+            mat.emissive = isNight ? lColor : new THREE.Color(0x000000);
+            mat.emissiveIntensity = isNight ? intensity * 0.75 : 0.0;
+            mat.roughness = isNight ? 0.35 : 0.42;
+          }
+          mat.needsUpdate = true;
+        } else if (id === 'veins') {
+          // Central LED Column Spine
+          mesh.visible = true;
+          mat.transparent = false;
+          mat.opacity = 1.0;
+          mat.color = new THREE.Color(0x242830);
+          mat.emissive = new THREE.Color(0x000000);
+          mat.emissiveIntensity = 0;
+          mat.roughness = 0.5;
+          mat.needsUpdate = true;
+        }
+      } else {
+        if (id === 'veins') {
+          if (isCutaway) {
+            if (currentDiffuserMode === 'hidden') {
+              mesh.visible = false;
+            } else if (currentDiffuserMode === 'ghost') {
+              mesh.visible = true;
+              mat.transparent = true;
+              mat.opacity = 0.35;
+              mat.roughness = 0.15;
+              mat.depthWrite = false;
+              mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.3);
+              mat.emissive = lColor;
+              mat.emissiveIntensity = 0.8;
+            } else {
+              // solid
+              mesh.visible = true;
+              mat.transparent = false;
+              mat.opacity = 1.0;
+              mat.depthWrite = true;
+              mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
+              mat.emissive = lColor;
+              mat.emissiveIntensity = 1.5;
+            }
+          } else {
             mesh.visible = true;
             mat.transparent = false;
             mat.opacity = 1.0;
             mat.depthWrite = true;
             mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
             mat.emissive = lColor;
-            mat.emissiveIntensity = 1.5;
+            mat.emissiveIntensity = isNight ? intensity * 2.2 : 0.8;
+            mat.roughness = isNight ? 0.25 : 0.45;
           }
-        } else {
-          mesh.visible = true;
-          mat.transparent = false;
-          mat.opacity = 1.0;
-          mat.depthWrite = true;
-          mat.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
-          mat.emissive = lColor;
-          mat.emissiveIntensity = isNight ? intensity * 2.2 : 0.8;
-          mat.roughness = isNight ? 0.25 : 0.45;
+          mat.needsUpdate = true;
         }
-        mat.needsUpdate = true;
       }
     });
 
@@ -597,25 +697,50 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       const geo = partToThreeGeometry(p);
       let mat: THREE.MeshStandardMaterial;
 
-      if (p.id === 'veins') {
-        mat = new THREE.MeshStandardMaterial({
-          color: lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25),
-          emissive: lColor,
-          emissiveIntensity: params.lightIntensity * 2.2,
-          roughness: 0.3,
-          metalness: 0.05,
-          side: THREE.DoubleSide,
-          polygonOffset: true,
-          polygonOffsetFactor: -1.0,
-          polygonOffsetUnits: -1.0,
-        });
+      if (params.lampArchetype === 'clouds') {
+        if (p.id === 'body') {
+          mat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color('#ffffff'),
+            roughness: 0.35,
+            metalness: 0.04,
+            side: THREE.DoubleSide,
+          });
+        } else if (p.id === 'veins') {
+          mat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(0x242830),
+            roughness: 0.5,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+          });
+        } else {
+          mat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(p.color),
+            roughness: 0.45,
+            metalness: 0.08,
+            side: THREE.DoubleSide,
+          });
+        }
       } else {
-        mat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(p.color),
-          roughness: 0.45,
-          metalness: 0.08,
-          side: THREE.DoubleSide,
-        });
+        if (p.id === 'veins') {
+          mat = new THREE.MeshStandardMaterial({
+            color: lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25),
+            emissive: lColor,
+            emissiveIntensity: params.lightIntensity * 2.2,
+            roughness: 0.3,
+            metalness: 0.05,
+            side: THREE.DoubleSide,
+            polygonOffset: true,
+            polygonOffsetFactor: -1.0,
+            polygonOffsetUnits: -1.0,
+          });
+        } else {
+          mat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(p.color),
+            roughness: 0.45,
+            metalness: 0.08,
+            side: THREE.DoubleSide,
+          });
+        }
       }
 
       const mesh = new THREE.Mesh(geo, mat);
@@ -627,14 +752,23 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     rebuildElectronicsModels(params);
 
-    const rMid = (params.baseRadius + params.topRadius) * 0.45;
-    veinLights.forEach((vl, idx) => {
-      const th = (idx / veinLights.length) * 2 * Math.PI + 0.3;
-      const zLight = (idx / veinLights.length) * params.height * 0.8 + 20;
-      vl.color = lColor;
-      vl.intensity = params.lightIntensity * 1.6;
-      vl.position.set(rMid * Math.cos(th), rMid * Math.sin(th), zLight);
-    });
+    if (params.lampArchetype === 'clouds') {
+      veinLights.forEach((vl, idx) => {
+        const zLight = (idx / veinLights.length) * (params.height - 24) + 18;
+        vl.color = lColor;
+        vl.intensity = params.lightIntensity * 2.2;
+        vl.position.set(0, 0, zLight);
+      });
+    } else {
+      const rMid = (params.baseRadius + params.topRadius) * 0.45;
+      veinLights.forEach((vl, idx) => {
+        const th = (idx / veinLights.length) * 2 * Math.PI + 0.3;
+        const zLight = (idx / veinLights.length) * params.height * 0.8 + 20;
+        vl.color = lColor;
+        vl.intensity = params.lightIntensity * 1.6;
+        vl.position.set(rMid * Math.cos(th), rMid * Math.sin(th), zLight);
+      });
+    }
 
     deskGlowLight.color = lColor;
     deskGlowLight.intensity = params.lightIntensity * 1.6;

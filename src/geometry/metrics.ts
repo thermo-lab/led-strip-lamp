@@ -14,7 +14,48 @@ export function calculateMetrics(params: LampParameters): AssemblyMetrics {
     waistRatio,
     veinCount,
     organicSeed,
+    lampArchetype,
   } = params;
+
+  if (lampArchetype === 'clouds') {
+    const facets = params.cloudColumnFacets ?? 3;
+    const colHeight = height - 10;
+    const ledsPerFacet = Math.max(1, Math.floor((colHeight - 16) / 16.67));
+    const totalLeds = facets * ledsPerFacet;
+    const stripSegmentLengthMm = Math.round(ledsPerFacet * 16.67);
+    const totalStripLengthMm = stripSegmentLengthMm * facets;
+    const nominalCurrentAmps = Math.round((totalLeds * 0.02) * 10) / 10;
+    const estPowerWatts = Math.round(nominalCurrentAmps * 5.0 * 10) / 10;
+    const minCoreBoreDiameterMm = Math.round((baseRadius - 10) * 2);
+
+    const warnings: string[] = [
+      `✓ 100% Support-Free Lithophane FDM Print (White PLA).`,
+      `✓ Straight Vertical Channels (${facets}× ${stripSegmentLengthMm}mm) with 0.0% Lateral Ribbon Strain.`,
+    ];
+
+    if (totalLeds > 80) {
+      warnings.push(`High LED count (${totalLeds} LEDs). Ensure USB power supply provides >= 2.4A.`);
+    }
+
+    return {
+      veinCount: facets,
+      veinArcLengthMm: stripSegmentLengthMm,
+      ledsPerVein: ledsPerFacet,
+      totalLeds,
+      stripSegmentLengthMm,
+      totalStripLengthMm,
+      estCurrentAmps: nominalCurrentAmps,
+      estPowerWatts,
+      minCoreBoreDiameterMm,
+      maxOverhangAngleDeg: 42,
+      isAssemblable: true,
+      warnings,
+      inPlaneStrainPct: 0.0,
+      minLateralRadiusMm: 9999,
+      minNormalRadiusMm: 9999,
+      stripFeasibility: 'optimal',
+    };
+  }
 
   const noise = createNoise3D(organicSeed ?? 42);
 

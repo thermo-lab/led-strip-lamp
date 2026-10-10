@@ -33,11 +33,31 @@
       </div>
       <div class="sidebar-content">
 
-        <!-- Curated Sculptural Archetypes -->
+        <!-- Design Archetype Selector -->
         <section class="control-section" style="padding-bottom: 0.75rem;">
-          <div class="section-title">Sculptural Presets</div>
+          <div class="section-title">Design Archetype</div>
           <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
-            <button class="preset-btn active" data-preset="calla">🌿 Calla Bio-Flora</button>
+            <button class="archetype-btn active" data-archetype="clouds">☁️ Fluffy Clouds</button>
+            <button class="archetype-btn" data-archetype="veins">🌿 Organic Veined</button>
+          </div>
+        </section>
+
+        <!-- Cloud Presets -->
+        <section class="control-section" id="presets-clouds" style="padding-bottom: 0.75rem;">
+          <div class="section-title">Cloud Archetype Presets</div>
+          <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
+            <button class="preset-cloud-btn active" data-cloud-preset="cumulus">☁️ Cumulus Dream</button>
+            <button class="preset-cloud-btn" data-cloud-preset="thunder">⚡ Thunderhead</button>
+            <button class="preset-cloud-btn" data-cloud-preset="cirrus">🌫 Cirrus Gentle</button>
+            <button class="preset-cloud-btn" data-cloud-preset="aurora">🌌 Aurora Pillar</button>
+          </div>
+        </section>
+
+        <!-- Vein Presets (hidden in cloud mode) -->
+        <section class="control-section" id="presets-veins" style="padding-bottom: 0.75rem; display: none;">
+          <div class="section-title">Veined Sculptural Presets</div>
+          <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
+            <button class="preset-btn" data-preset="calla">🌿 Calla Bio-Flora</button>
             <button class="preset-btn" data-preset="basalt">🌋 Volcanic Basalt</button>
             <button class="preset-btn" data-preset="vortex">🌪 Fluid Vortex</button>
             <button class="preset-btn" data-preset="nordic">🏛 Nordic Minimal</button>
@@ -48,29 +68,72 @@
         <section class="control-section">
           <div class="section-title">Silhouette & Form</div>
           <div class="control-group">
-            <div class="control-label"><span>Height</span><span id="param-height-val" class="control-val">175 mm</span></div>
-            <input type="range" id="param-height" min="120" max="240" step="5" value="175" />
+            <div class="control-label"><span>Height</span><span id="param-height-val" class="control-val">180 mm</span></div>
+            <input type="range" id="param-height" min="120" max="240" step="5" value="180" />
           </div>
           <div class="control-group">
-            <div class="control-label"><span>Base Radius</span><span id="param-base-radius-val" class="control-val">48 mm</span></div>
-            <input type="range" id="param-base-radius" min="36" max="65" step="1" value="48" />
+            <div class="control-label"><span>Base Radius</span><span id="param-base-radius-val" class="control-val">44 mm</span></div>
+            <input type="range" id="param-base-radius" min="36" max="65" step="1" value="44" />
           </div>
           <div class="control-group">
-            <div class="control-label"><span>Top Radius</span><span id="param-top-radius-val" class="control-val">36 mm</span></div>
-            <input type="range" id="param-top-radius" min="25" max="55" step="1" value="36" />
+            <div class="control-label"><span>Top Radius</span><span id="param-top-radius-val" class="control-val">38 mm</span></div>
+            <input type="range" id="param-top-radius" min="25" max="55" step="1" value="38" />
           </div>
           <div class="control-group">
-            <div class="control-label"><span>Waist Curve</span><span id="param-waist-ratio-val" class="control-val">0.82x</span></div>
-            <input type="range" id="param-waist-ratio" min="0.65" max="1.35" step="0.02" value="0.82" />
+            <div class="control-label"><span>Waist Curve</span><span id="param-waist-ratio-val" class="control-val">0.92x</span></div>
+            <input type="range" id="param-waist-ratio" min="0.65" max="1.35" step="0.02" value="0.92" />
           </div>
-          <div class="control-group">
-            <div class="control-label"><span>Torsion Twist</span><span id="param-twist-angle-val" class="control-val">75°</span></div>
-            <input type="range" id="param-twist-angle" min="-180" max="180" step="5" value="75" />
+          <div class="control-group" id="group-twist-angle" style="display: none;">
+            <div class="control-label"><span>Torsion Twist</span><span id="param-twist-angle-val" class="control-val">0°</span></div>
+            <input type="range" id="param-twist-angle" min="-180" max="180" step="5" value="0" />
           </div>
         </section>
 
-        <!-- 2. Organic Growth & Form Evolution -->
-        <section class="control-section">
+        <!-- 2. Cumulus Cloud Formation (Active for Clouds) -->
+        <section class="control-section" id="section-cloud-controls">
+          <div class="section-title">Cumulus Cloud Formation</div>
+          <div class="control-group">
+            <div class="control-label"><span>Puff Cluster Density</span><span id="param-cloud-density-val" class="control-val">36 puffs</span></div>
+            <input type="range" id="param-cloud-density" min="20" max="50" step="2" value="36" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Billow Puff Depth</span><span id="param-cloud-depth-val" class="control-val">8.5 mm</span></div>
+            <input type="range" id="param-cloud-depth" min="4.0" max="14.0" step="0.5" value="8.5" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Glow Highlights (Min Wall)</span><span id="param-cloud-min-thick-val" class="control-val">1.0 mm</span></div>
+            <input type="range" id="param-cloud-min-thick" min="0.8" max="1.8" step="0.1" value="1.0" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Shadow Depth (Max Wall)</span><span id="param-cloud-max-thick-val" class="control-val">4.8 mm</span></div>
+            <input type="range" id="param-cloud-max-thick" min="3.0" max="6.5" step="0.2" value="4.8" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Fibrous Cloud Fluff</span><span id="param-cloud-turb-val" class="control-val">1.3 mm</span></div>
+            <input type="range" id="param-cloud-turb" min="0.0" max="2.5" step="0.1" value="1.3" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Rim Lighting Halo (Edge Glow)</span><span id="param-cloud-rim-val" class="control-val">1.6x</span></div>
+            <input type="range" id="param-cloud-rim" min="0.0" max="2.5" step="0.1" value="1.6" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Central LED Tower</span></div>
+            <div class="button-group" style="grid-template-columns: repeat(2, 1fr);">
+              <button class="facet-btn active" data-facets="3">3 Strips (120°)</button>
+              <button class="facet-btn" data-facets="4">4 Strips (90°)</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Cloud Seed</span><span id="param-cloud-seed-val" class="control-val">77</span></div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="range" id="param-cloud-seed" min="1" max="999" step="1" value="77" style="flex: 1;" />
+              <button id="btn-mutate-cloud-seed" class="btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;" title="Mutate/Evolve Cloud Seed">🎲 Mutate</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Organic Growth & Evolution (Active for Veins) -->
+        <section class="control-section" id="section-growth-controls" style="display: none;">
           <div class="section-title">Organic Growth & Evolution</div>
           <div class="control-group">
             <div class="control-label"><span>Growth Algorithm</span></div>
@@ -98,8 +161,8 @@
           </div>
         </section>
 
-        <!-- 3. Opaque Surface Architecture -->
-        <section class="control-section">
+        <!-- 4. Opaque Surface Architecture (Active for Veins) -->
+        <section class="control-section" id="section-surface-controls" style="display: none;">
           <div class="section-title">Opaque Surface Architecture</div>
           <div class="control-group">
             <div class="control-label"><span>Surface Style</span></div>
@@ -120,8 +183,8 @@
           </div>
         </section>
 
-        <!-- 3. Light-Emitting Veins -->
-        <section class="control-section">
+        <!-- 5. Light-Emitting Veins (Active for Veins) -->
+        <section class="control-section" id="section-vein-controls" style="display: none;">
           <div class="section-title">Light-Emitting Veins</div>
           <div class="control-group">
             <div class="control-label"><span>Vein Count</span><span id="param-vein-count-val" class="control-val">3 veins</span></div>
@@ -236,11 +299,11 @@
           <div class="export-actions">
             <button id="btn-export-3mf" class="btn-primary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Download Multi-Material 3MF
+              <span id="btn-export-3mf-label">Download Cloud Column 3MF</span>
             </button>
             <div class="stl-export-row">
-              <button id="btn-export-stl-body" class="btn-secondary" title="Export Dark Shade STL">Body STL</button>
-              <button id="btn-export-stl-veins" class="btn-secondary" title="Export Translucent Veins STL">Veins STL</button>
+              <button id="btn-export-stl-body" class="btn-secondary" title="Export Shade STL"><span id="lbl-stl-body">Cloud Shade</span> STL</button>
+              <button id="btn-export-stl-veins" class="btn-secondary" title="Export Central Spine STL"><span id="lbl-stl-veins">LED Spine</span> STL</button>
               <button id="btn-export-stl-base" class="btn-secondary" title="Export Base Cradle STL">Base STL</button>
             </div>
           </div>
@@ -256,7 +319,7 @@
         <button class="view-mode-btn active" data-mode="night">Night Glow</button>
         <button class="view-mode-btn" data-mode="day">Studio Day</button>
         <button class="view-mode-btn" data-mode="cutaway">Inspect Assembly</button>
-        <button id="btn-inspect-channel" class="view-mode-btn highlight-btn" title="Macro zoom to 10mm C-channel retaining lips">🔍 Retention Detail</button>
+        <button id="btn-inspect-channel" class="view-mode-btn highlight-btn" title="Inspect mechanical retention details">🔍 Architecture Detail</button>
         <button id="btn-reset-cam" class="view-mode-btn" title="Reset Viewpoint">Reset Cam</button>
       </div>
 
@@ -267,11 +330,11 @@
           <input type="range" id="cutaway-slider" min="0" max="1" step="0.01" value="0.5" />
         </div>
         <div class="cutaway-diffuser-row">
-          <span>Diffuser:</span>
+          <span>Shade / Diffuser:</span>
           <div class="pill-group">
             <button id="btn-diffuser-ghost" class="toggle-pill active" title="Translucent 35% ghost view">Ghost</button>
-            <button id="btn-diffuser-hide" class="toggle-pill" title="Hide diffuser completely">Hide</button>
-            <button id="btn-diffuser-solid" class="toggle-pill" title="Solid opaque diffuser">Solid</button>
+            <button id="btn-diffuser-hide" class="toggle-pill" title="Hide shade completely">Hide</button>
+            <button id="btn-diffuser-solid" class="toggle-pill" title="Solid opaque shade">Solid</button>
           </div>
         </div>
       </div>
@@ -280,12 +343,38 @@
       <div id="retention-callout" class="retention-callout-panel" style="display: none;">
         <div class="callout-header">
           <div class="callout-title">
-            <span class="callout-badge">WS2812B Captive Track</span>
-            <span class="callout-subtitle">10.0mm Flex Strip Carrier</span>
+            <span class="callout-badge" id="callout-badge">Lithophane Cloud Architecture</span>
+            <span class="callout-subtitle" id="callout-subtitle">White PLA Shade + Central LED Spine</span>
           </div>
           <button id="btn-close-callout" class="callout-close" title="Dismiss Callout">✕</button>
         </div>
-        <div class="callout-specs">
+        <div class="callout-specs" id="callout-specs-clouds">
+          <div class="callout-spec-row">
+            <span class="spec-label">Material:</span>
+            <span class="spec-val">100% Snapmaker SnapSpeed White PLA (#FFFFFF)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Lithophane Gradient:</span>
+            <span class="spec-val">1.0mm (bright peaks) to 4.8mm (shadow crevices)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Central LED Tower:</span>
+            <span class="spec-val">3-4 vertical 10.5mm WS2812B channels</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Conduit Wire Core:</span>
+            <span class="spec-val">12mm diameter hollow center + turnaround notches</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Base Mating:</span>
+            <span class="spec-val">Keyed anti-rotation plug + shade seating step</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Electronics Bay:</span>
+            <span class="spec-val">ESP32-C6 compliant snap-fit clips & flush USB-C</span>
+          </div>
+        </div>
+        <div class="callout-specs" id="callout-specs-veins" style="display: none;">
           <div class="callout-spec-row">
             <span class="spec-label">Bed Floor:</span>
             <span class="spec-val">11.6 mm (+0.8mm clearance per side)</span>
@@ -303,24 +392,12 @@
             <span class="spec-val">7.6 mm (5050 LED clearance)</span>
           </div>
           <div class="callout-spec-row">
-            <span class="spec-label">Bottom Mouth:</span>
-            <span class="spec-val">13.2 mm flared funnel at Z=0</span>
-          </div>
-          <div class="callout-spec-row">
             <span class="spec-label">Base Mating:</span>
             <span class="spec-val">Quarter-turn diametric bayonet (90° & 270°)</span>
           </div>
-          <div class="callout-spec-row">
-            <span class="spec-label">Board Mount:</span>
-            <span class="spec-val">ESP32-C6 compliant snap-fit clips & USB-C portal</span>
-          </div>
-          <div class="callout-spec-row">
-            <span class="spec-label">Wire Routing:</span>
-            <span class="spec-val">Floor raceways from 3 funnels to ESP32 headers</span>
-          </div>
         </div>
-        <div class="callout-note">
-          🔒 Strip feeds through flared bottom throat at Z=0. Wires route through recessed floor raceways straight into ESP32 pin headers with zero bayonet pinch.
+        <div class="callout-note" id="callout-note-text">
+          ☁️ Single-toolhead white PLA print. No purge towers or color changes! The central column holds outward-facing LED strips that illuminate the clouds from within.
         </div>
       </div>
 

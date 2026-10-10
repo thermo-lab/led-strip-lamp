@@ -39,12 +39,166 @@ export function setupUI(
     });
   };
 
+  // Archetype Selectors (Clouds vs Veins)
+  const archetypeButtons = document.querySelectorAll<HTMLButtonElement>('.archetype-btn');
+  const sectionCloudControls = document.getElementById('section-cloud-controls');
+  const presetsClouds = document.getElementById('presets-clouds');
+  const sectionGrowthControls = document.getElementById('section-growth-controls');
+  const sectionSurfaceControls = document.getElementById('section-surface-controls');
+  const sectionVeinControls = document.getElementById('section-vein-controls');
+  const presetsVeins = document.getElementById('presets-veins');
+  const groupTwistAngle = document.getElementById('group-twist-angle');
+  const btnExport3mfLabel = document.getElementById('btn-export-3mf-label');
+  const lblStlBody = document.getElementById('lbl-stl-body');
+  const lblStlVeins = document.getElementById('lbl-stl-veins');
+  const calloutSpecsClouds = document.getElementById('callout-specs-clouds');
+  const calloutSpecsVeins = document.getElementById('callout-specs-veins');
+  const calloutBadge = document.getElementById('callout-badge');
+  const calloutSubtitle = document.getElementById('callout-subtitle');
+  const calloutNoteText = document.getElementById('callout-note-text');
+
+  const updateArchetypeUI = (archetype: 'clouds' | 'veins') => {
+    current.lampArchetype = archetype;
+    archetypeButtons.forEach((b) => b.classList.toggle('active', b.dataset.archetype === archetype));
+
+    const isClouds = archetype === 'clouds';
+    if (sectionCloudControls) sectionCloudControls.style.display = isClouds ? 'block' : 'none';
+    if (presetsClouds) presetsClouds.style.display = isClouds ? 'block' : 'none';
+    if (sectionGrowthControls) sectionGrowthControls.style.display = isClouds ? 'none' : 'block';
+    if (sectionSurfaceControls) sectionSurfaceControls.style.display = isClouds ? 'none' : 'block';
+    if (sectionVeinControls) sectionVeinControls.style.display = isClouds ? 'none' : 'block';
+    if (presetsVeins) presetsVeins.style.display = isClouds ? 'none' : 'block';
+    if (groupTwistAngle) groupTwistAngle.style.display = isClouds ? 'none' : 'block';
+
+    if (btnExport3mfLabel) {
+      btnExport3mfLabel.textContent = isClouds ? 'Download Cloud Column 3MF' : 'Download Multi-Material 3MF';
+    }
+    if (lblStlBody) lblStlBody.textContent = isClouds ? 'Cloud Shade' : 'Body';
+    if (lblStlVeins) lblStlVeins.textContent = isClouds ? 'LED Spine' : 'Veins';
+
+    if (calloutSpecsClouds) calloutSpecsClouds.style.display = isClouds ? 'block' : 'none';
+    if (calloutSpecsVeins) calloutSpecsVeins.style.display = isClouds ? 'none' : 'block';
+    if (calloutBadge) calloutBadge.textContent = isClouds ? 'Lithophane Cloud Architecture' : 'WS2812B Captive Track';
+    if (calloutSubtitle) calloutSubtitle.textContent = isClouds ? 'White PLA Shade + Central LED Spine' : '10.0mm Flex Strip Carrier';
+    if (calloutNoteText) {
+      calloutNoteText.textContent = isClouds
+        ? '☁️ Single-toolhead white PLA print. No purge towers or color changes! The central column holds outward-facing LED strips that illuminate the clouds from within.'
+        : '🔒 Strip feeds through flared bottom throat at Z=0. Wires route through recessed floor raceways straight into ESP32 pin headers with zero bayonet pinch.';
+    }
+  };
+
+  archetypeButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const arch = (btn.dataset.archetype as 'clouds' | 'veins') || 'clouds';
+      updateArchetypeUI(arch);
+      handlers.onParamChange(current);
+    });
+  });
+
   // Bind Dimension Sliders
   bindSlider('param-height', 'height', (v) => `${v} mm`);
   bindSlider('param-base-radius', 'baseRadius', (v) => `${v} mm`);
   bindSlider('param-top-radius', 'topRadius', (v) => `${v} mm`);
   bindSlider('param-waist-ratio', 'waistRatio', (v) => `${v.toFixed(2)}x`);
   bindSlider('param-twist-angle', 'twistAngle', (v) => `${v}°`);
+
+  // Bind Cloud Sliders
+  bindSlider('param-cloud-density', 'cloudPuffDensity', (v) => `${Math.round(v)} puffs`);
+  bindSlider('param-cloud-depth', 'cloudPuffDepth', (v) => `${v.toFixed(1)} mm`);
+  bindSlider('param-cloud-min-thick', 'cloudMinThickness', (v) => `${v.toFixed(1)} mm`);
+  bindSlider('param-cloud-max-thick', 'cloudMaxThickness', (v) => `${v.toFixed(1)} mm`);
+  bindSlider('param-cloud-turb', 'cloudTurbulence', (v) => `${v.toFixed(1)} mm`);
+  bindSlider('param-cloud-rim', 'cloudRimLighting', (v) => `${v.toFixed(1)}x`);
+  bindSlider('param-cloud-seed', 'organicSeed', (v) => String(Math.round(v)));
+
+  // Bind Facet Selector Buttons
+  const facetButtons = document.querySelectorAll<HTMLButtonElement>('.facet-btn');
+  facetButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      facetButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      current.cloudColumnFacets = parseInt(btn.dataset.facets ?? '3', 10);
+      handlers.onParamChange(current);
+    });
+  });
+
+  // Mutate Cloud Seed Button
+  const btnMutateCloudSeed = document.getElementById('btn-mutate-cloud-seed');
+  if (btnMutateCloudSeed) {
+    btnMutateCloudSeed.addEventListener('click', () => {
+      current.organicSeed = Math.floor(Math.random() * 998) + 1;
+      const seedSlider = document.getElementById('param-cloud-seed') as HTMLInputElement;
+      const seedBadge = document.getElementById('param-cloud-seed-val');
+      if (seedSlider) seedSlider.value = String(current.organicSeed);
+      if (seedBadge) seedBadge.textContent = String(current.organicSeed);
+      handlers.onParamChange(current);
+    });
+  }
+
+  // Cloud Archetype Presets
+  const cloudPresetButtons = document.querySelectorAll<HTMLButtonElement>('.preset-cloud-btn');
+  cloudPresetButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      cloudPresetButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const p = btn.dataset.cloudPreset;
+      if (p === 'cumulus') {
+        current.cloudPuffDensity = 36;
+        current.cloudPuffDepth = 8.5;
+        current.cloudMinThickness = 0.95;
+        current.cloudMaxThickness = 4.8;
+        current.cloudTurbulence = 1.3;
+        current.cloudRimLighting = 1.6;
+        current.cloudColumnFacets = 3;
+        current.height = 180;
+        current.baseRadius = 44;
+        current.topRadius = 38;
+        current.waistRatio = 0.92;
+        current.lightColor = '#ff9d3b';
+      } else if (p === 'thunder') {
+        current.cloudPuffDensity = 42;
+        current.cloudPuffDepth = 11.5;
+        current.cloudMinThickness = 0.90;
+        current.cloudMaxThickness = 5.8;
+        current.cloudTurbulence = 1.8;
+        current.cloudRimLighting = 1.8;
+        current.cloudColumnFacets = 4;
+        current.height = 190;
+        current.baseRadius = 46;
+        current.topRadius = 36;
+        current.waistRatio = 0.85;
+        current.lightColor = '#ffbe76';
+      } else if (p === 'cirrus') {
+        current.cloudPuffDensity = 24;
+        current.cloudPuffDepth = 6.0;
+        current.cloudMinThickness = 1.1;
+        current.cloudMaxThickness = 3.6;
+        current.cloudTurbulence = 0.9;
+        current.cloudRimLighting = 1.3;
+        current.cloudColumnFacets = 3;
+        current.height = 175;
+        current.baseRadius = 42;
+        current.topRadius = 35;
+        current.waistRatio = 0.95;
+        current.lightColor = '#ff9d3b';
+      } else if (p === 'aurora') {
+        current.cloudPuffDensity = 38;
+        current.cloudPuffDepth = 9.0;
+        current.cloudMinThickness = 0.95;
+        current.cloudMaxThickness = 5.0;
+        current.cloudTurbulence = 1.6;
+        current.cloudRimLighting = 2.0;
+        current.cloudColumnFacets = 4;
+        current.height = 185;
+        current.baseRadius = 45;
+        current.topRadius = 40;
+        current.waistRatio = 0.90;
+        current.lightColor = '#00d2d3';
+      }
+      syncAllUIInputs();
+      handlers.onParamChange(current);
+    });
+  });
 
   // Bind Organic Growth & Evolution Sliders
   bindSlider('param-curl-strength', 'curlStrength', (v) => v.toFixed(1));
@@ -101,6 +255,13 @@ export function setupUI(
     updateInput('param-top-radius', current.topRadius, (v) => `${v} mm`);
     updateInput('param-waist-ratio', current.waistRatio, (v) => `${v.toFixed(2)}x`);
     updateInput('param-twist-angle', current.twistAngle, (v) => `${v}°`);
+    updateInput('param-cloud-density', current.cloudPuffDensity ?? 36, (v) => `${Math.round(v)} puffs`);
+    updateInput('param-cloud-depth', current.cloudPuffDepth ?? 8.5, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-cloud-min-thick', current.cloudMinThickness ?? 1.0, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-cloud-max-thick', current.cloudMaxThickness ?? 4.8, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-cloud-turb', current.cloudTurbulence ?? 1.3, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-cloud-rim', current.cloudRimLighting ?? 1.6, (v) => `${v.toFixed(1)}x`);
+    updateInput('param-cloud-seed', current.organicSeed, (v) => String(Math.round(v)));
     updateInput('param-curl-strength', current.curlStrength, (v) => v.toFixed(1));
     updateInput('param-surface-noise', current.surfaceNoise, (v) => `${v.toFixed(1)} mm`);
     updateInput('param-organic-seed', current.organicSeed, (v) => String(Math.round(v)));
@@ -455,6 +616,9 @@ export function setupUI(
       handlers.onParamChange(current);
     });
   }
+
+  // Initialize archetype UI display
+  updateArchetypeUI(current.lampArchetype ?? 'clouds');
 
   return {
     setGenerating(generating: boolean) {
