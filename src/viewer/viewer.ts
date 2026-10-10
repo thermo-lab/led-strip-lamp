@@ -153,6 +153,97 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     };
   }
 
+  let cloudFlouretteNormalMap: THREE.CanvasTexture | null = null;
+  function getCloudFlouretteNormalMap(): THREE.CanvasTexture {
+    if (cloudFlouretteNormalMap) return cloudFlouretteNormalMap;
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const imgData = ctx.createImageData(size, size);
+    const data = imgData.data;
+
+    const gridSize = 16;
+    const cellSize = size / gridSize;
+    const seeds: [number, number][] = [];
+    let sRand = 42;
+    const pseudoRand = () => {
+      sRand = (sRand * 16807) % 2147483647;
+      return (sRand - 1) / 2147483646;
+    };
+
+    for (let gy = 0; gy < gridSize; gy++) {
+      for (let gx = 0; gx < gridSize; gx++) {
+        const sx = (gx + 0.15 + 0.70 * pseudoRand()) * cellSize;
+        const sy = (gy + 0.15 + 0.70 * pseudoRand()) * cellSize;
+        seeds.push([sx, sy]);
+      }
+    }
+
+    const heightMap = new Float32Array(size * size);
+    for (let y = 0; y < size; y++) {
+      const gy = Math.floor(y / cellSize);
+      for (let x = 0; x < size; x++) {
+        const gx = Math.floor(x / cellSize);
+        let minDist = cellSize * 2.0;
+
+        for (let dy = -1; dy <= 1; dy++) {
+          const ny = (gy + dy + gridSize) % gridSize;
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = (gx + dx + gridSize) % gridSize;
+            const [sx, sy] = seeds[ny * gridSize + nx];
+            let px = sx;
+            let py = sy;
+            if (dx === -1 && x < cellSize) px -= size;
+            if (dx === 1 && x > size - cellSize) px += size;
+            if (dy === -1 && y < cellSize) py -= size;
+            if (dy === 1 && y > size - cellSize) py += size;
+
+            const d = Math.hypot(x - px, y - py);
+            if (d < minDist) minDist = d;
+          }
+        }
+
+        const normD = Math.min(1.0, minDist / (cellSize * 0.72));
+        const dome = 0.5 * (1.0 + Math.cos(Math.PI * normD));
+        const stipple = (pseudoRand() - 0.5) * 0.16;
+        heightMap[y * size + x] = Math.max(0, Math.min(1, dome + stipple));
+      }
+    }
+
+    for (let y = 0; y < size; y++) {
+      const y0 = (y - 1 + size) % size;
+      const y1 = (y + 1) % size;
+      for (let x = 0; x < size; x++) {
+        const x0 = (x - 1 + size) % size;
+        const x1 = (x + 1) % size;
+
+        const dhdx = (heightMap[y * size + x1] - heightMap[y * size + x0]) * 2.2;
+        const dhdy = (heightMap[y1 * size + x] - heightMap[y0 * size + x]) * 2.2;
+
+        const len = Math.hypot(dhdx, dhdy, 1.0);
+        const nx = -dhdx / len;
+        const ny = -dhdy / len;
+        const nz = 1.0 / len;
+
+        const idx = (y * size + x) * 4;
+        data[idx] = Math.floor((nx * 0.5 + 0.5) * 255);
+        data[idx + 1] = Math.floor((ny * 0.5 + 0.5) * 255);
+        data[idx + 2] = Math.floor((nz * 0.5 + 0.5) * 255);
+        data[idx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(16, 48);
+    cloudFlouretteNormalMap = texture;
+    return texture;
+  }
+
   function partToThreeGeometry(part: LampPart): THREE.BufferGeometry {
     const geo = new THREE.BufferGeometry();
     const vp = part.mesh.vertProperties;
@@ -160,13 +251,24 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const count = vp.length / np;
 
     const positions = new Float32Array(count * 3);
+    const uvs = new Float32Array(count * 2);
+    const h = activeParams?.height ?? 180.0;
+
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = vp[i * np];
-      positions[i * 3 + 1] = vp[i * np + 1];
-      positions[i * 3 + 2] = vp[i * np + 2];
+      const x = vp[i * np];
+      const y = vp[i * np + 1];
+      const z = vp[i * np + 2];
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+
+      const angle = Math.atan2(y, x);
+      uvs[i * 2] = (angle / (2 * Math.PI)) + 0.5;
+      uvs[i * 2 + 1] = z / h;
     }
 
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
     geo.computeVertexNormals();
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
@@ -605,10 +707,13 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       const mat = mesh.material as THREE.MeshStandardMaterial;
       mat.clippingPlanes = isCutaway ? [clipPlane] : [];
       mat.clipShadows = true;
+      mat.normalMap = null;
 
       if (activeParams?.lampArchetype === 'clouds') {
         if (id === 'body') {
-          // Cloud shade
+          // Cloud shade with broccoli flourette micro-texture
+          mat.normalMap = getCloudFlouretteNormalMap();
+          mat.normalScale.set(0.65, 0.65);
           if (isCutaway) {
             mesh.visible = currentDiffuserMode !== 'hidden';
             mat.transparent = currentDiffuserMode === 'ghost';
@@ -630,6 +735,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           }
           mat.needsUpdate = true;
         } else if (id === 'veins') {
+          mat.normalMap = null;
           // Central LED Column Spine
           mesh.visible = true;
           mat.transparent = false;
