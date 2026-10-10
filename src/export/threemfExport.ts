@@ -112,11 +112,30 @@ export function export3MF(parts: LampPart[], filename = 'custom_led_lamp.3mf'): 
   <Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
 </Relationships>`;
 
+  // Orca / Bambu Slicer per-object config
+  const isCloudLamp = parts.some((p) => p.name.toLowerCase().includes('cloud'));
+  let modelSettingsXml = '';
+  if (isCloudLamp) {
+    modelSettingsXml = `<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <object id="10">
+    <metadata key="fuzzy_skin" value="contour"/>
+    <metadata key="fuzzy_skin_point_distance" value="0.8"/>
+    <metadata key="fuzzy_skin_thickness" value="0.3"/>
+    <metadata key="wall_loops" value="999"/>
+  </object>
+</config>`;
+  }
+
   const files: Record<string, Uint8Array> = {
     '[Content_Types].xml': strToU8(contentTypesXml),
     '_rels/.rels': strToU8(relsXml),
     '3D/3dmodel.model': strToU8(modelXml),
   };
+
+  if (modelSettingsXml) {
+    files['Metadata/model_settings.config'] = strToU8(modelSettingsXml);
+  }
 
   const zipData = zipSync(files);
   const blob = new Blob([zipData], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });

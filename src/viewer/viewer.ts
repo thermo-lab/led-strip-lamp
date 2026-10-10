@@ -239,7 +239,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(16, 48);
     cloudFlouretteNormalMap = texture;
     return texture;
   }
@@ -712,8 +711,21 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       if (activeParams?.lampArchetype === 'clouds') {
         if (id === 'body') {
           // Cloud shade with broccoli flourette micro-texture
-          mat.normalMap = getCloudFlouretteNormalMap();
-          mat.normalScale.set(0.65, 0.65);
+          const normalTex = getCloudFlouretteNormalMap();
+          const h = activeParams?.height ?? 180.0;
+          const rMean = (((activeParams?.baseRadius ?? 44) + (activeParams?.topRadius ?? 38)) / 2) + 5.0;
+          const circ = 2 * Math.PI * rMean;
+          const beadSizeMm = 1.85; // 1.85mm flourette bud diameter
+          const tileSizeMm = 16 * beadSizeMm; // 16 beads per texture tile = ~29.6mm
+
+          const vRepeat = h / tileSizeMm;
+          const uRepeat = circ / tileSizeMm;
+          normalTex.repeat.set(uRepeat, vRepeat);
+
+          const microTooth = activeParams?.cloudTurbulence ?? 0.35;
+          const normalStrength = Math.max(0.0, Math.min(1.8, microTooth * 2.2));
+          mat.normalMap = normalStrength > 0.01 ? normalTex : null;
+          mat.normalScale.set(normalStrength, normalStrength);
           if (isCutaway) {
             mesh.visible = currentDiffuserMode !== 'hidden';
             mat.transparent = currentDiffuserMode === 'ghost';

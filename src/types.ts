@@ -26,10 +26,11 @@ export interface LampParameters {
 
   // Cloud Column Morphology (when lampArchetype === 'clouds')
   cloudPuffDensity?: number;    // Number of puff clusters (20 to 50)
-  cloudPuffDepth?: number;      // Puff bulge amplitude in mm (4.0 to 14.0 mm)
+  cloudPuffDepth?: number;      // Macro puff bulge amplitude in mm (4.0 to 16.0 mm)
+  cloudFloretScale?: number;    // Intermediate floret cluster scale in mm (0.0 to 6.0 mm, diameter ~7-10mm)
   cloudMinThickness?: number;  // Lithophane min thickness for highlights (0.8 to 1.6 mm)
   cloudMaxThickness?: number;  // Lithophane max thickness for shadows (3.0 to 6.0 mm)
-  cloudTurbulence?: number;    // Micro-fibrous cloud fluff noise (0.0 to 2.5 mm)
+  cloudTurbulence?: number;    // Micro-granule / broccoli flourette tooth intensity (0.0 to 1.0 mm)
   cloudColumnFacets?: number;  // Number of strip mounting facets on central pillar (3 or 4)
   cloudRimLighting?: number;   // Rim lighting halo intensity at cloud clump edges (0.0 to 2.5)
 

@@ -23,7 +23,8 @@ export function generateCloudPuffCenters(
   seed = 77,
   height = 180,
   puffCount = 22,
-  puffDepth = 12.0
+  puffDepth = 12.0,
+  floretScale = 2.4
 ): CloudPuff[] {
   let s = Math.abs(seed) % 2147483647;
   if (s === 0) s = 1;
@@ -90,6 +91,35 @@ export function generateCloudPuffCenters(
         rZ: subRZ,
         haloWeight: 0.85,
       });
+
+      // Intermediate Broccoli Florets (Level 2: 2 florets per sub-lobe, ~7-11mm diameter)
+      if (floretScale > 0.1) {
+        for (let k = 0; k < 2; k++) {
+          const floretAngle = (k * Math.PI + (rand() - 0.5) * 1.2) % (2 * Math.PI);
+          const fDist = 0.50 + rand() * 0.35;
+          const fArcOff = Math.cos(floretAngle) * (subRCirc * fDist);
+          const fZOff = Math.sin(floretAngle) * (subRZ * fDist);
+
+          const thFloret = (thSub + fArcOff / 44.0 + 4 * Math.PI) % (2 * Math.PI);
+          const zFloret = Math.min(height * 0.94, Math.max(height * 0.06, zSub + fZOff));
+          const uFloret = zFloret / height;
+
+          const fAmp = (floretScale / 2.4) * (1.6 + rand() * 1.2); // ~1.6 to 2.8 mm
+          const fRCirc = 8.5 + rand() * 3.5; // 8.5 to 12 mm wide
+          const fRZ = 7.0 + rand() * 3.0;   // 7.0 to 10 mm tall
+
+          puffs.push({
+            level: 2,
+            u: uFloret,
+            z: zFloret,
+            th: thFloret,
+            amp: fAmp,
+            rCirc: fRCirc,
+            rZ: fRZ,
+            haloWeight: 0.70,
+          });
+        }
+      }
     }
   }
 
@@ -103,7 +133,7 @@ export function generateCloudPuffCenters(
     const rZ = 16.0 + rand() * 6.0;
 
     puffs.push({
-      level: 2,
+      level: 3,
       u,
       z: u * height,
       th,
@@ -212,8 +242,15 @@ export function evalFluffyCloudField(
     noise(xMm * flowScale * 1.8 + 77.1, yMm * flowScale * 1.8 + 18.4, zMm * flowScale * 1.8) * 0.7
   );
 
-  // Outer radius: composite billows + fluid flow waves (NO high-frequency vertex noise)
-  const rOuter = rNom + (compositeBulge + fluidWave) * rimEase;
+  // Level 2 Intermediate Broccoli Floret Harmonics (~7-10mm wavelength)
+  const floretScale = params.cloudFloretScale ?? 2.4;
+  const floretWave = floretScale > 0.1 ? (
+    noise(xMm * 0.10 + 42.1, yMm * 0.10 + 88.3, zMm * 0.10 + 17.5) * (floretScale * 0.45) +
+    noise(xMm * 0.16 + 14.7, yMm * 0.16 + 33.2, zMm * 0.16 + 91.1) * (floretScale * 0.20)
+  ) : 0;
+
+  // Outer radius: composite billows + fluid flow waves + intermediate florets
+  const rOuter = rNom + (compositeBulge + fluidWave + floretWave) * rimEase;
 
   // LITHOPHANE THICKNESS WITH PRONOUNCED ORGANIC RIM LIGHTING:
   // 1. Far crevices between clumps: thick wall (~4.5mm) -> deep velvety shadow
@@ -476,11 +513,12 @@ export function generateCloudLampGeometry(wasm: any, params: LampParameters): La
     height = 180,
     cloudPuffDensity = 22,
     cloudPuffDepth = 12.0,
+    cloudFloretScale = 2.4,
     organicSeed = 77,
     bodyColor = '#2d3748',
   } = params;
 
-  const puffs = generateCloudPuffCenters(organicSeed, height, cloudPuffDensity, cloudPuffDepth);
+  const puffs = generateCloudPuffCenters(organicSeed, height, cloudPuffDensity, cloudPuffDepth, cloudFloretScale);
   const noise = createNoise3D(organicSeed);
 
   // 1. Build Watertight Cloud Shade Mesh (180 slices x 200 vertices for ultra-smooth organic curvature)

@@ -105,9 +105,10 @@ export function setupUI(
   // Bind Cloud Sliders
   bindSlider('param-cloud-density', 'cloudPuffDensity', (v) => `${Math.round(v)} puffs`);
   bindSlider('param-cloud-depth', 'cloudPuffDepth', (v) => `${v.toFixed(1)} mm`);
+  bindSlider('param-cloud-floret', 'cloudFloretScale', (v) => `${v.toFixed(1)} mm`);
   bindSlider('param-cloud-min-thick', 'cloudMinThickness', (v) => `${v.toFixed(1)} mm`);
   bindSlider('param-cloud-max-thick', 'cloudMaxThickness', (v) => `${v.toFixed(1)} mm`);
-  bindSlider('param-cloud-turb', 'cloudTurbulence', (v) => `${v.toFixed(1)} mm`);
+  bindSlider('param-cloud-turb', 'cloudTurbulence', (v) => `${v.toFixed(2)} mm`);
   bindSlider('param-cloud-rim', 'cloudRimLighting', (v) => `${v.toFixed(1)}x`);
   bindSlider('param-cloud-seed', 'organicSeed', (v) => String(Math.round(v)));
 
@@ -145,9 +146,10 @@ export function setupUI(
       if (p === 'cumulus') {
         current.cloudPuffDensity = 22;
         current.cloudPuffDepth = 12.0;
+        current.cloudFloretScale = 2.4;
         current.cloudMinThickness = 0.95;
         current.cloudMaxThickness = 4.8;
-        current.cloudTurbulence = 0.20;
+        current.cloudTurbulence = 0.35;
         current.cloudRimLighting = 2.0;
         current.cloudColumnFacets = 3;
         current.height = 180;
@@ -158,9 +160,10 @@ export function setupUI(
       } else if (p === 'thunder') {
         current.cloudPuffDensity = 28;
         current.cloudPuffDepth = 14.5;
+        current.cloudFloretScale = 3.6;
         current.cloudMinThickness = 0.90;
         current.cloudMaxThickness = 5.5;
-        current.cloudTurbulence = 0.25;
+        current.cloudTurbulence = 0.45;
         current.cloudRimLighting = 2.4;
         current.cloudColumnFacets = 4;
         current.height = 190;
@@ -171,9 +174,10 @@ export function setupUI(
       } else if (p === 'cirrus') {
         current.cloudPuffDensity = 18;
         current.cloudPuffDepth = 8.5;
+        current.cloudFloretScale = 1.4;
         current.cloudMinThickness = 1.05;
         current.cloudMaxThickness = 3.8;
-        current.cloudTurbulence = 0.15;
+        current.cloudTurbulence = 0.20;
         current.cloudRimLighting = 1.5;
         current.cloudColumnFacets = 3;
         current.height = 175;
@@ -184,9 +188,10 @@ export function setupUI(
       } else if (p === 'aurora') {
         current.cloudPuffDensity = 26;
         current.cloudPuffDepth = 11.0;
+        current.cloudFloretScale = 2.6;
         current.cloudMinThickness = 0.95;
         current.cloudMaxThickness = 4.6;
-        current.cloudTurbulence = 0.20;
+        current.cloudTurbulence = 0.35;
         current.cloudRimLighting = 2.2;
         current.cloudColumnFacets = 4;
         current.height = 185;
@@ -257,9 +262,10 @@ export function setupUI(
     updateInput('param-twist-angle', current.twistAngle, (v) => `${v}°`);
     updateInput('param-cloud-density', current.cloudPuffDensity ?? 22, (v) => `${Math.round(v)} puffs`);
     updateInput('param-cloud-depth', current.cloudPuffDepth ?? 12.0, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-cloud-floret', current.cloudFloretScale ?? 2.4, (v) => `${v.toFixed(1)} mm`);
     updateInput('param-cloud-min-thick', current.cloudMinThickness ?? 0.95, (v) => `${v.toFixed(2)} mm`);
     updateInput('param-cloud-max-thick', current.cloudMaxThickness ?? 4.8, (v) => `${v.toFixed(1)} mm`);
-    updateInput('param-cloud-turb', current.cloudTurbulence ?? 0.20, (v) => `${v.toFixed(2)} mm`);
+    updateInput('param-cloud-turb', current.cloudTurbulence ?? 0.35, (v) => `${v.toFixed(2)} mm`);
     updateInput('param-cloud-rim', current.cloudRimLighting ?? 2.0, (v) => `${v.toFixed(1)}x`);
     updateInput('param-cloud-seed', current.organicSeed, (v) => String(Math.round(v)));
     updateInput('param-curl-strength', current.curlStrength, (v) => v.toFixed(1));
