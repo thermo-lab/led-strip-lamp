@@ -166,7 +166,14 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     const gridSize = 16;
     const cellSize = size / gridSize;
-    const seeds: [number, number][] = [];
+
+    interface FloretSeed {
+      x: number;
+      y: number;
+      radius: number;
+      amplitude: number;
+    }
+    const seeds: FloretSeed[] = [];
     let sRand = 42;
     const pseudoRand = () => {
       sRand = (sRand * 16807) % 2147483647;
@@ -175,40 +182,56 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     for (let gy = 0; gy < gridSize; gy++) {
       for (let gx = 0; gx < gridSize; gx++) {
-        const sx = (gx + 0.15 + 0.70 * pseudoRand()) * cellSize;
-        const sy = (gy + 0.15 + 0.70 * pseudoRand()) * cellSize;
-        seeds.push([sx, sy]);
+        const sx = (gx + 0.10 + 0.80 * pseudoRand()) * cellSize;
+        const sy = (gy + 0.10 + 0.80 * pseudoRand()) * cellSize;
+        // Non-uniform bud radius: coarse florets (up to 1.35x) and fine buds (down to 0.65x)
+        const radius = cellSize * (0.62 + 0.50 * pseudoRand());
+        const amplitude = 0.68 + 0.32 * pseudoRand();
+        seeds.push({ x: sx, y: sy, radius, amplitude });
       }
     }
 
     const heightMap = new Float32Array(size * size);
     for (let y = 0; y < size; y++) {
-      const gy = Math.floor(y / cellSize);
+      const vNorm = (y / size) * 2 * Math.PI;
       for (let x = 0; x < size; x++) {
-        const gx = Math.floor(x / cellSize);
-        let minDist = cellSize * 2.0;
+        const uNorm = (x / size) * 2 * Math.PI;
 
+        // 2D Domain Warping with periodic harmonics for seamless toroidal wrapping
+        const warpX = 14.0 * Math.sin(3 * vNorm) + 7.0 * Math.cos(2 * uNorm);
+        const warpY = 14.0 * Math.cos(3 * uNorm) + 7.0 * Math.sin(2 * vNorm);
+        let wx = (x + warpX) % size;
+        if (wx < 0) wx += size;
+        let wy = (y + warpY) % size;
+        if (wy < 0) wy += size;
+
+        const gw = Math.floor(wx / cellSize);
+        const gh = Math.floor(wy / cellSize);
+
+        let bestDome = 0;
         for (let dy = -1; dy <= 1; dy++) {
-          const ny = (gy + dy + gridSize) % gridSize;
+          const ny = (gh + dy + gridSize) % gridSize;
           for (let dx = -1; dx <= 1; dx++) {
-            const nx = (gx + dx + gridSize) % gridSize;
-            const [sx, sy] = seeds[ny * gridSize + nx];
-            let px = sx;
-            let py = sy;
-            if (dx === -1 && x < cellSize) px -= size;
-            if (dx === 1 && x > size - cellSize) px += size;
-            if (dy === -1 && y < cellSize) py -= size;
-            if (dy === 1 && y > size - cellSize) py += size;
+            const nx = (gw + dx + gridSize) % gridSize;
+            const seed = seeds[ny * gridSize + nx];
+            let px = seed.x;
+            let py = seed.y;
+            if (dx === -1 && wx < cellSize) px -= size;
+            if (dx === 1 && wx > size - cellSize) px += size;
+            if (dy === -1 && wy < cellSize) py -= size;
+            if (dy === 1 && wy > size - cellSize) py += size;
 
-            const d = Math.hypot(x - px, y - py);
-            if (d < minDist) minDist = d;
+            const d = Math.hypot(wx - px, wy - py);
+            const normD = Math.min(1.0, d / seed.radius);
+            const dome = seed.amplitude * 0.5 * (1.0 + Math.cos(Math.PI * normD));
+            if (dome > bestDome) bestDome = dome;
           }
         }
 
-        const normD = Math.min(1.0, minDist / (cellSize * 0.72));
-        const dome = 0.5 * (1.0 + Math.cos(Math.PI * normD));
+        // Macro relief patchiness across clusters (~25-30mm organic wavelength)
+        const macroPatch = 0.65 + 0.35 * Math.sin(2 * uNorm + 0.6) * Math.cos(2 * vNorm - 0.4);
         const stipple = (pseudoRand() - 0.5) * 0.16;
-        heightMap[y * size + x] = Math.max(0, Math.min(1, dome + stipple));
+        heightMap[y * size + x] = Math.max(0, Math.min(1, bestDome * macroPatch + stipple));
       }
     }
 
