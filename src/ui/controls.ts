@@ -62,6 +62,17 @@ export function setupUI(
     });
   });
 
+  // Surface Style Selectors
+  const surfaceStyleButtons = document.querySelectorAll<HTMLButtonElement>('.surface-style-btn');
+  surfaceStyleButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      surfaceStyleButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      current.surfaceStyle = btn.dataset.style as any;
+      handlers.onParamChange(current);
+    });
+  });
+
   // Vein Pattern Selectors (Continuous vs Segmented Windows)
   const patternButtons = document.querySelectorAll<HTMLButtonElement>('.pattern-btn');
   const groupVeinSegments = document.getElementById('group-vein-segments');
@@ -93,6 +104,7 @@ export function setupUI(
     updateInput('param-curl-strength', current.curlStrength, (v) => v.toFixed(1));
     updateInput('param-surface-noise', current.surfaceNoise, (v) => `${v.toFixed(1)} mm`);
     updateInput('param-organic-seed', current.organicSeed, (v) => String(Math.round(v)));
+    updateInput('param-relief-depth', current.reliefDepth, (v) => `${v.toFixed(1)} mm`);
     updateInput('param-flute-count', current.fluteCount, (v) => `${v} ribs`);
     updateInput('param-flute-depth', current.fluteDepth, (v) => `${v.toFixed(1)} mm`);
     updateInput('param-vein-count', current.veinCount, (v) => `${v} veins`);
@@ -103,6 +115,7 @@ export function setupUI(
     updateInput('param-vein-segments', current.veinSegments, (v) => `${v} windows`);
 
     growthButtons.forEach((b) => b.classList.toggle('active', b.dataset.growth === current.growthMode));
+    surfaceStyleButtons.forEach((b) => b.classList.toggle('active', b.dataset.style === current.surfaceStyle));
     patternButtons.forEach((b) => b.classList.toggle('active', b.dataset.pattern === current.veinPattern));
     if (groupVeinSegments) {
       groupVeinSegments.style.display = current.veinPattern === 'segmented' ? 'block' : 'none';
@@ -119,6 +132,9 @@ export function setupUI(
 
       if (preset === 'calla') {
         current.growthMode = 'organic';
+        current.surfaceStyle = 'organic';
+        current.reliefDepth = 2.8;
+        current.fluteCount = 16;
         current.veinCount = 3;
         current.baseRadius = 48;
         current.topRadius = 38;
@@ -133,6 +149,9 @@ export function setupUI(
         current.bodyColor = '#5a6578';
       } else if (preset === 'basalt') {
         current.growthMode = 'mycelium';
+        current.surfaceStyle = 'basalt';
+        current.reliefDepth = 3.6;
+        current.fluteCount = 12;
         current.veinCount = 4;
         current.baseRadius = 50;
         current.topRadius = 34;
@@ -148,6 +167,9 @@ export function setupUI(
         current.bodyColor = '#475569';
       } else if (preset === 'vortex') {
         current.growthMode = 'vortex';
+        current.surfaceStyle = 'fluted';
+        current.reliefDepth = 3.2;
+        current.fluteCount = 18;
         current.veinCount = 4;
         current.baseRadius = 46;
         current.topRadius = 36;
@@ -162,6 +184,9 @@ export function setupUI(
         current.bodyColor = '#64748b';
       } else if (preset === 'nordic') {
         current.growthMode = 'geometric';
+        current.surfaceStyle = 'strata';
+        current.reliefDepth = 2.4;
+        current.fluteCount = 16;
         current.veinCount = 4;
         current.baseRadius = 46;
         current.topRadius = 36;
@@ -172,7 +197,6 @@ export function setupUI(
         current.waveAmplitude = 0.0;
         current.waveFrequency = 1.0;
         current.veinPattern = 'continuous';
-        current.fluteCount = 16;
         current.fluteDepth = 1.8;
         current.lightColor = '#ffbe76';
         current.bodyColor = '#52525b';
@@ -198,7 +222,8 @@ export function setupUI(
     });
   }
 
-  // Bind Fluting Sliders
+  // Bind Surface Relief & Fluting Sliders
+  bindSlider('param-relief-depth', 'reliefDepth', (v) => `${v.toFixed(1)} mm`);
   bindSlider('param-flute-count', 'fluteCount', (v) => `${v} ribs`);
   bindSlider('param-flute-depth', 'fluteDepth', (v) => `${v.toFixed(1)} mm`);
 

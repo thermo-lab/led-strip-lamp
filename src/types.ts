@@ -1,5 +1,6 @@
 export type VeinRelief = 'flush' | 'recessed' | 'proud';
 export type VeinPattern = 'continuous' | 'segmented';
+export type SurfaceStyle = 'fluted' | 'strata' | 'basalt' | 'organic';
 
 export interface LampParameters {
   // Overall Dimensions
@@ -12,6 +13,8 @@ export interface LampParameters {
 
   // Surface Texture & Organic Growth
   growthMode: 'organic' | 'geometric' | 'vortex' | 'mycelium';
+  surfaceStyle: SurfaceStyle; // Opaque surface treatment: fluted, strata, basalt, or organic
+  reliefDepth: number;        // Depth of sculpted surface relief (mm), 0.0 to 5.0
   organicSeed: number;        // Mutation seed (1 to 999)
   curlStrength: number;       // Particle streamline curl flow (0.0 to 5.0)
   surfaceNoise: number;       // Biomimetic surface displacement (mm), 0 to 4.0

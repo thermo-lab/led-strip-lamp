@@ -102,9 +102,10 @@ export function evalOrganicCenter(
 /**
  * Calculates evolved organic radius on the shell, combining:
  * 1. Macro-anatomy: botanical buttress root flaring and muscular organic lobes.
- * 2. Meso-fluting: fluid organic valleys where veins nestle.
- * 3. Micro-texture: coherent multi-octave 3D tactile displacement.
- * All lobes swell outward from the structural trunk to guarantee zero wall breaches.
+ * 2. Solid surface architecture: fluted columns, terraced strata, chiseled basalt, or smooth organic.
+ * 3. Sculpted riverbank canyon lips flanking the glowing veins (+2.8mm raised organic margins).
+ * 4. Micro-texture: coherent multi-octave 3D tactile displacement.
+ * All lobes swell outward from the structural trunk to guarantee zero wall breaches and 100% airtight solid opaque shell.
  */
 export function evalOrganicRadius(
   u: number,
@@ -113,60 +114,101 @@ export function evalOrganicRadius(
   params: LampParameters,
   noise: NoiseFunction
 ): number {
-  const { growthMode, fluteCount, fluteDepth, twistAngle, surfaceNoise } = params;
+  const {
+    growthMode,
+    surfaceStyle = 'fluted',
+    reliefDepth = 2.5,
+    fluteCount = 16,
+    twistAngle,
+    surfaceNoise = 1.6,
+    veinCount,
+  } = params;
+
   const twistRad = (twistAngle * Math.PI) / 180;
   const thTwisted = th - u * twistRad;
-
-  // Base subtle fluting ribs (if user enabled fluting)
-  let fluting = 0;
-  if (fluteCount > 0 && fluteDepth > 0) {
-    fluting = fluteDepth * 0.5 * Math.cos(fluteCount * thTwisted);
-  }
-
-  if (growthMode === 'geometric' || surfaceNoise <= 0) {
-    return Math.max(24, rNom + fluting);
-  }
-
-  const cosTh = Math.cos(thTwisted);
-  const sinTh = Math.sin(thTwisted);
 
   let macroMorphology = 0;
   let microTexture = 0;
 
   if (growthMode === 'organic') {
     // 1. Botanical Buttress Roots: flare outward at the base (u < 0.25) like a cypress tree
-    const rootFlare = 8.0 * Math.exp(-u * 5.0) * Math.pow(Math.cos(1.5 * thTwisted), 2);
+    const rootFlare = 6.0 * Math.exp(-u * 5.0) * (0.5 + 0.5 * Math.cos(3 * thTwisted));
 
     // 2. Muscular Organic Lobes: 3 natural living lobes that twist gracefully with height
-    // Lobes swell OUTWARD (0 to +7.5mm) from the structural trunk datum
     const lobeAngle = thTwisted + 0.35 * Math.sin(u * Math.PI * 1.8);
-    const lobeSwelling = 7.5 * Math.pow(0.5 + 0.5 * Math.cos(3 * lobeAngle), 1.4);
+    const lobeSwelling = 4.5 * Math.pow(0.5 + 0.5 * Math.cos(3 * lobeAngle), 1.4);
 
     macroMorphology = rootFlare + lobeSwelling;
 
-    // 3. Multi-octave coherent bark/cellular tissue displacement
-    const n1 = noise(cosTh * 1.6, sinTh * 1.6, u * 2.4);
-    microTexture = surfaceNoise * n1 * 0.8;
-
+    if (surfaceNoise > 0) {
+      const cosTh = Math.cos(thTwisted);
+      const sinTh = Math.sin(thTwisted);
+      const n1 = noise(cosTh * 1.6, sinTh * 1.6, u * 2.4);
+      microTexture = surfaceNoise * n1 * 0.6;
+    }
   } else if (growthMode === 'vortex') {
     // Hydrodynamic whirlpool: spiraling vortex flutes that accelerate at the waist
     const vortexAngle = thTwisted + u * Math.PI * 2.0;
-    macroMorphology = 5.5 * Math.pow(0.5 + 0.5 * Math.cos(4 * vortexAngle), 1.5);
-    microTexture = surfaceNoise * noise(Math.cos(vortexAngle) * 2.2, Math.sin(vortexAngle) * 2.2, u * 3.0) * 0.7;
-
+    macroMorphology = 4.0 * Math.pow(0.5 + 0.5 * Math.cos(4 * vortexAngle), 1.5);
+    if (surfaceNoise > 0) {
+      microTexture = surfaceNoise * noise(Math.cos(vortexAngle) * 2.2, Math.sin(vortexAngle) * 2.2, u * 3.0) * 0.6;
+    }
   } else if (growthMode === 'mycelium') {
-    // Bioluminescent Fungal Hyphae / Canyon Earth Fissures: irregular organic facets
-    const rootFlare = 6.0 * Math.exp(-u * 4.5);
-    const hyphae = 4.5 * Math.pow(0.5 + 0.5 * Math.cos(5 * thTwisted + u * 4.0), 2.0);
+    // Bioluminescent Fungal Hyphae / Canyon Earth Fissures
+    const rootFlare = 5.0 * Math.exp(-u * 4.5);
+    const hyphae = 3.5 * Math.pow(0.5 + 0.5 * Math.cos(5 * thTwisted + u * 4.0), 2.0);
     macroMorphology = rootFlare + hyphae;
-    microTexture = surfaceNoise * noise(Math.cos(thTwisted) * 3.0, Math.sin(thTwisted) * 3.0, u * 4.0) * 0.9;
+    if (surfaceNoise > 0) {
+      microTexture = surfaceNoise * noise(Math.cos(thTwisted) * 3.0, Math.sin(thTwisted) * 3.0, u * 4.0) * 0.7;
+    }
   }
 
-  // Ensure minimum radius is solidly structural everywhere
-  return Math.max(26.0, rNom + fluting + macroMorphology + microTexture);
+  // Calculate distance to nearest vein for raised riverbank canyon margins
+  let minVeinDist = Infinity;
+  for (let v = 0; v < veinCount; v++) {
+    const thV = evalVeinAngle(v, veinCount, u, params, noise);
+    let dTh = Math.abs((th - thV) % (2 * Math.PI));
+    if (dTh > Math.PI) dTh = 2 * Math.PI - dTh;
+    const arcDist = dTh * rNom;
+    if (arcDist < minVeinDist) minVeinDist = arcDist;
+  }
+
+  // Raised Riverbank Canyon Lips (+2.8mm max swell at margin d = 5mm)
+  const dEdge = 5.0;
+  const sigma = 5.5;
+  const rDepth = Math.max(0, reliefDepth);
+  const riverbankSwell = (rDepth / 2.5) * 2.8 * Math.exp(-Math.pow((minVeinDist - dEdge) / sigma, 2));
+
+  // Solid Surface Architecture styles (Zero holes, 100% continuous solid shell)
+  let styleMod = 0;
+  if (surfaceStyle === 'fluted') {
+    // 1. Scalloped Architectural Fluting (16 fluid vertical/twisted flutes)
+    const nFlutes = fluteCount > 0 ? fluteCount : 16;
+    const fluteAmp = rDepth * 0.85;
+    styleMod = riverbankSwell * 0.65 + fluteAmp * Math.cos(nFlutes * thTwisted);
+  } else if (surfaceStyle === 'strata') {
+    // 2. Terraced Sedimentary Sandstone / Ceramic Contours (~28 stepped shelves)
+    const nStrata = Math.max(16, Math.min(48, Math.round(params.height / 6.0)));
+    const strataPhase = u * nStrata + 0.25 * Math.sin(3 * thTwisted);
+    const frac = strataPhase - Math.floor(strataPhase);
+    const step = (rDepth * 0.6) * (Math.pow(frac, 0.4) - 0.5);
+    styleMod = riverbankSwell + step;
+  } else if (surfaceStyle === 'basalt') {
+    // 3. Chiseled Basaltic Polygonal Planes (12 bold geometric facets)
+    const nFacets = fluteCount > 0 ? Math.max(6, Math.min(24, fluteCount)) : 12;
+    const facetAngle = (2 * Math.PI) / nFacets;
+    const phase = ((thTwisted % facetAngle) + facetAngle) % facetAngle - facetAngle / 2;
+    const facetPlateau = (rDepth * 0.95) * (Math.cos(phase * (nFacets / 2)) - 0.5);
+    styleMod = riverbankSwell * 0.6 + facetPlateau;
+  } else {
+    // 4. Smooth Organic
+    styleMod = riverbankSwell;
+  }
+
+  // Ensure minimum radius is solidly structural everywhere (> 24mm)
+  return Math.max(24.0, rNom + macroMorphology + microTexture + styleMod);
 }
 
-/**
 /**
  * Evaluates pure, smooth, developable carrier trajectory for the internal WS2812B flex PCB strip bed.
  * A continuous developable cylindrical/conical helix guarantees:

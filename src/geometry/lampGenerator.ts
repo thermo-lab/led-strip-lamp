@@ -197,28 +197,30 @@ function buildWindowSegmentMesh(
     const dTh = wVein / Math.max(16, rOuter);
     const [cx, cy] = centerFn(u);
 
-    let rFront = rOuter;
-    let rBack = rOuter - diffuserThickness;
-
-    if (!isDiffuser) {
-      const rLip = (rNom - diffuserThickness) - 1.5;
-      rBack = rLip - 0.2;
-      rFront = rOuter + 2.5; // Cuts cleanly through outer surface
-    } else {
-      let reliefOffset = 0;
-      if (veinRelief === 'proud') reliefOffset = 1.2;
-      else if (veinRelief === 'recessed') reliefOffset = -1.0;
-      rFront = rOuter + reliefOffset;
-    }
-
     // Front arc (facing outward)
     for (let i = 0; i <= nArcSteps; i++) {
       const th = thVein - dTh / 2 + (i / nArcSteps) * dTh;
+      const rOuterAtTh = evalOrganicRadius(u, th, rNom, params, noise);
+      let rFront = rOuterAtTh;
+      if (!isDiffuser) {
+        rFront = rOuterAtTh + 2.5; // Cuts cleanly through outer surface
+      } else {
+        let reliefOffset = 0;
+        if (veinRelief === 'proud') reliefOffset = 1.2;
+        else if (veinRelief === 'recessed') reliefOffset = -1.0;
+        rFront = rOuterAtTh + reliefOffset;
+      }
       verts.push(cx + rFront * Math.cos(th), cy + rFront * Math.sin(th), z);
     }
     // Back arc (facing inward)
     for (let i = nArcSteps; i >= 0; i--) {
       const th = thVein - dTh / 2 + (i / nArcSteps) * dTh;
+      const rOuterAtTh = evalOrganicRadius(u, th, rNom, params, noise);
+      let rBack = rOuterAtTh - diffuserThickness;
+      if (!isDiffuser) {
+        const rLip = (rNom - diffuserThickness) - 1.5;
+        rBack = rLip - 0.2;
+      }
       verts.push(cx + rBack * Math.cos(th), cy + rBack * Math.sin(th), z);
     }
   }

@@ -13,11 +13,13 @@ const defaultParams: LampParameters = {
   twistAngle: 75,
 
   growthMode: 'organic',
+  surfaceStyle: 'fluted',
+  reliefDepth: 2.8,
   organicSeed: 42,
   curlStrength: 2.2,
   surfaceNoise: 1.6,
 
-  fluteCount: 12,
+  fluteCount: 16,
   fluteDepth: 1.0,
 
   veinCount: 3,
