@@ -625,7 +625,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
             mat.color = new THREE.Color('#ffffff');
             mat.emissive = isNight ? lColor : new THREE.Color(0x000000);
             mat.emissiveIntensity = isNight ? intensity * 0.75 : 0.0;
-            mat.roughness = isNight ? 0.35 : 0.42;
+            mat.roughness = 0.70; // Matte, powdery velvety finish
+            mat.metalness = 0.0;
           }
           mat.needsUpdate = true;
         } else if (id === 'veins') {
@@ -701,8 +702,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         if (p.id === 'body') {
           mat = new THREE.MeshStandardMaterial({
             color: new THREE.Color('#ffffff'),
-            roughness: 0.35,
-            metalness: 0.04,
+            roughness: 0.70,
+            metalness: 0.0,
             side: THREE.DoubleSide,
           });
         } else if (p.id === 'veins') {

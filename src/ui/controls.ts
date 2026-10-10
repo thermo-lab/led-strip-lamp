@@ -143,12 +143,12 @@ export function setupUI(
       btn.classList.add('active');
       const p = btn.dataset.cloudPreset;
       if (p === 'cumulus') {
-        current.cloudPuffDensity = 36;
-        current.cloudPuffDepth = 8.5;
+        current.cloudPuffDensity = 24;
+        current.cloudPuffDepth = 12.0;
         current.cloudMinThickness = 0.95;
         current.cloudMaxThickness = 4.8;
-        current.cloudTurbulence = 1.3;
-        current.cloudRimLighting = 1.6;
+        current.cloudTurbulence = 0.20;
+        current.cloudRimLighting = 2.0;
         current.cloudColumnFacets = 3;
         current.height = 180;
         current.baseRadius = 44;
@@ -156,12 +156,12 @@ export function setupUI(
         current.waistRatio = 0.92;
         current.lightColor = '#ff9d3b';
       } else if (p === 'thunder') {
-        current.cloudPuffDensity = 42;
-        current.cloudPuffDepth = 11.5;
+        current.cloudPuffDensity = 28;
+        current.cloudPuffDepth = 14.5;
         current.cloudMinThickness = 0.90;
-        current.cloudMaxThickness = 5.8;
-        current.cloudTurbulence = 1.8;
-        current.cloudRimLighting = 1.8;
+        current.cloudMaxThickness = 5.5;
+        current.cloudTurbulence = 0.25;
+        current.cloudRimLighting = 2.4;
         current.cloudColumnFacets = 4;
         current.height = 190;
         current.baseRadius = 46;
@@ -169,12 +169,12 @@ export function setupUI(
         current.waistRatio = 0.85;
         current.lightColor = '#ffbe76';
       } else if (p === 'cirrus') {
-        current.cloudPuffDensity = 24;
-        current.cloudPuffDepth = 6.0;
-        current.cloudMinThickness = 1.1;
-        current.cloudMaxThickness = 3.6;
-        current.cloudTurbulence = 0.9;
-        current.cloudRimLighting = 1.3;
+        current.cloudPuffDensity = 18;
+        current.cloudPuffDepth = 8.5;
+        current.cloudMinThickness = 1.05;
+        current.cloudMaxThickness = 3.8;
+        current.cloudTurbulence = 0.15;
+        current.cloudRimLighting = 1.5;
         current.cloudColumnFacets = 3;
         current.height = 175;
         current.baseRadius = 42;
@@ -182,12 +182,12 @@ export function setupUI(
         current.waistRatio = 0.95;
         current.lightColor = '#ff9d3b';
       } else if (p === 'aurora') {
-        current.cloudPuffDensity = 38;
-        current.cloudPuffDepth = 9.0;
+        current.cloudPuffDensity = 26;
+        current.cloudPuffDepth = 11.0;
         current.cloudMinThickness = 0.95;
-        current.cloudMaxThickness = 5.0;
-        current.cloudTurbulence = 1.6;
-        current.cloudRimLighting = 2.0;
+        current.cloudMaxThickness = 4.6;
+        current.cloudTurbulence = 0.20;
+        current.cloudRimLighting = 2.2;
         current.cloudColumnFacets = 4;
         current.height = 185;
         current.baseRadius = 45;
@@ -255,12 +255,12 @@ export function setupUI(
     updateInput('param-top-radius', current.topRadius, (v) => `${v} mm`);
     updateInput('param-waist-ratio', current.waistRatio, (v) => `${v.toFixed(2)}x`);
     updateInput('param-twist-angle', current.twistAngle, (v) => `${v}°`);
-    updateInput('param-cloud-density', current.cloudPuffDensity ?? 36, (v) => `${Math.round(v)} puffs`);
-    updateInput('param-cloud-depth', current.cloudPuffDepth ?? 8.5, (v) => `${v.toFixed(1)} mm`);
-    updateInput('param-cloud-min-thick', current.cloudMinThickness ?? 1.0, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-cloud-density', current.cloudPuffDensity ?? 24, (v) => `${Math.round(v)} puffs`);
+    updateInput('param-cloud-depth', current.cloudPuffDepth ?? 12.0, (v) => `${v.toFixed(1)} mm`);
+    updateInput('param-cloud-min-thick', current.cloudMinThickness ?? 0.95, (v) => `${v.toFixed(2)} mm`);
     updateInput('param-cloud-max-thick', current.cloudMaxThickness ?? 4.8, (v) => `${v.toFixed(1)} mm`);
-    updateInput('param-cloud-turb', current.cloudTurbulence ?? 1.3, (v) => `${v.toFixed(1)} mm`);
-    updateInput('param-cloud-rim', current.cloudRimLighting ?? 1.6, (v) => `${v.toFixed(1)}x`);
+    updateInput('param-cloud-turb', current.cloudTurbulence ?? 0.20, (v) => `${v.toFixed(2)} mm`);
+    updateInput('param-cloud-rim', current.cloudRimLighting ?? 2.0, (v) => `${v.toFixed(1)}x`);
     updateInput('param-cloud-seed', current.organicSeed, (v) => String(Math.round(v)));
     updateInput('param-curl-strength', current.curlStrength, (v) => v.toFixed(1));
     updateInput('param-surface-noise', current.surfaceNoise, (v) => `${v.toFixed(1)} mm`);

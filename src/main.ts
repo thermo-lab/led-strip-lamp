@@ -14,12 +14,12 @@ const defaultParams: LampParameters = {
   twistAngle: 0,
 
   // Cloud Column Parameters
-  cloudPuffDensity: 36,
-  cloudPuffDepth: 8.5,
+  cloudPuffDensity: 24,
+  cloudPuffDepth: 12.0,
   cloudMinThickness: 0.95,
   cloudMaxThickness: 4.8,
-  cloudTurbulence: 1.3,
-  cloudRimLighting: 1.6,
+  cloudTurbulence: 0.20,
+  cloudRimLighting: 2.0,
   cloudColumnFacets: 3,
 
   // Organic Veined Lamp Parameters
