@@ -14,7 +14,7 @@ const defaultParams: LampParameters = {
   twistAngle: 0,
 
   // Cloud Column Parameters
-  cloudPuffDensity: 24,
+  cloudPuffDensity: 22,
   cloudPuffDepth: 12.0,
   cloudMinThickness: 0.95,
   cloudMaxThickness: 4.8,

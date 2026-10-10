@@ -143,7 +143,7 @@ export function setupUI(
       btn.classList.add('active');
       const p = btn.dataset.cloudPreset;
       if (p === 'cumulus') {
-        current.cloudPuffDensity = 24;
+        current.cloudPuffDensity = 22;
         current.cloudPuffDepth = 12.0;
         current.cloudMinThickness = 0.95;
         current.cloudMaxThickness = 4.8;
@@ -255,7 +255,7 @@ export function setupUI(
     updateInput('param-top-radius', current.topRadius, (v) => `${v} mm`);
     updateInput('param-waist-ratio', current.waistRatio, (v) => `${v.toFixed(2)}x`);
     updateInput('param-twist-angle', current.twistAngle, (v) => `${v}°`);
-    updateInput('param-cloud-density', current.cloudPuffDensity ?? 24, (v) => `${Math.round(v)} puffs`);
+    updateInput('param-cloud-density', current.cloudPuffDensity ?? 22, (v) => `${Math.round(v)} puffs`);
     updateInput('param-cloud-depth', current.cloudPuffDepth ?? 12.0, (v) => `${v.toFixed(1)} mm`);
     updateInput('param-cloud-min-thick', current.cloudMinThickness ?? 0.95, (v) => `${v.toFixed(2)} mm`);
     updateInput('param-cloud-max-thick', current.cloudMaxThickness ?? 4.8, (v) => `${v.toFixed(1)} mm`);
