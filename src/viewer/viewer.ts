@@ -870,6 +870,12 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                     float transDiffuse = saturate( dot( -geometryNormal, directLight.direction ) ) * 0.70;
                     vec3 transIllu = ( transDot + transDiffuse + 0.25 ) * pow(vTransmittance, 1.3) * directLight.color;
                     reflectedLight.directDiffuse += transIllu * uTranslucencyStrength;
+
+                    // Makoto Shinkai Backlit Silhouette "Silver Lining":
+                    // Grazing perimeter edges flare with radiant rim transmission against dark background
+                    float fresnelRim = pow( 1.0 - saturate( abs( dot( geometryNormal, geometryViewDir ) ) ), 2.8 );
+                    vec3 silverLining = directLight.color * (0.95 * fresnelRim * uTranslucencyStrength);
+                    reflectedLight.directDiffuse += silverLining;
                   }
                   `
                 )
@@ -880,7 +886,11 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                 `
                 #include <emissivemap_fragment>
                 // Dynamic lithophane contrast: 30% warm ambient floor up to 100% glowing highlights
-                totalEmissiveRadiance *= (0.30 + 0.70 * vTransmittance);
+                // With James Gurney subtle chromatic temperature progression:
+                // Highlights bloom slightly warmer/incandescent, thick bodies scatter into deep sunset amber
+                float tBloom = pow(vTransmittance, 1.8);
+                vec3 chromaticTint = mix(vec3(0.92, 0.80, 0.68), vec3(1.15, 1.10, 1.02), tBloom);
+                totalEmissiveRadiance *= (0.30 + 0.70 * vTransmittance) * chromaticTint;
                 `
               );
             };
