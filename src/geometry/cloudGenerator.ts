@@ -35,52 +35,57 @@ export function generateCloudPuffCenters(
   };
 
   const puffs: CloudPuff[] = [];
+  const phi = (Math.sqrt(5) - 1) / 2; // Golden ratio base for uniform 360° spherical coverage
   const ampScale = puffDepth / 12.0;
 
-  // Master Cloud Hierarchy: 4 Dominant Towering Formations ("Mother Banks")
-  const nBanks = Math.max(3, Math.min(5, Math.round(puffCount / 5)));
-  for (let b = 0; b < nBanks; b++) {
-    const uBase = 0.16 + (b / Math.max(1, nBanks - 1)) * 0.68;
-    const uJitter = (rand() - 0.5) * 0.06;
-    const u = Math.min(0.90, Math.max(0.10, uBase + uJitter));
+  for (let i = 0; i < puffCount; i++) {
+    // Non-linear elevation with organic clustering
+    const uBase = 0.08 + (i / (puffCount - 1)) * 0.84;
+    const uJitter = (rand() - 0.5) * 0.055;
+    const u = Math.min(0.92, Math.max(0.08, uBase + uJitter));
 
-    // Helical wind convection swirl around column
-    const thSpiral = (b * ((2 * Math.PI) / nBanks) * 1.35 + (rand() - 0.5) * 0.40 + 4 * Math.PI) % (2 * Math.PI);
-    const amp = (14.0 + rand() * 4.5) * ampScale; // Massive pillowy mother head (14-18.5mm)
-    const rCirc = 36.0 + rand() * 10.0;           // Broad 36-46mm width
-    const rZ = 28.0 + rand() * 8.0;               // 28-36mm height
+    // Azimuth: golden spiral + organic wind swirl + jitter
+    const thSwirl = Math.sin(u * Math.PI * 2.2) * 0.35;
+    const thJitter = (rand() - 0.5) * 0.45;
+    const th = (i * phi * 2 * Math.PI + thSwirl + thJitter + 4 * Math.PI) % (2 * Math.PI);
+
+    // Primary macro mound: bold, broad, pillowy (protrusion 11 to 15.5 mm)
+    const amp = (11.0 + rand() * 4.5) * ampScale;
+    const rCirc = 30.0 + rand() * 10.0; // 30 to 40 mm wide
+    const rZ = 22.0 + rand() * 8.0;     // 22 to 30 mm tall
     const z = u * height;
 
     puffs.push({
       level: 0,
-      bankId: b,
+      bankId: i % 4,
       u,
       z,
-      th: thSpiral,
+      th,
       amp,
       rCirc,
       rZ,
       haloWeight: 1.0,
     });
 
-    // Companion Convection Sub-lobes (Level 1 "Father Lobes": 3 lobes per mother bank)
-    for (let j = 0; j < 3; j++) {
-      const angle = (j * ((2 * Math.PI) / 3) + (rand() - 0.5) * 0.70) % (2 * Math.PI);
-      const dist = 0.48 + rand() * 0.28;
+    // Companion cauliflower sub-lobes (2 companion lobes clustering with each primary mound)
+    for (let j = 0; j < 2; j++) {
+      const angle = (j * Math.PI + (rand() - 0.5) * 0.8) % (2 * Math.PI);
+      const dist = 0.45 + rand() * 0.35;
       const arcOff = Math.cos(angle) * (rCirc * dist);
-      const zOff = Math.sin(angle) * (rZ * dist * 0.85);
+      const zOff = Math.sin(angle) * (rZ * dist);
 
-      const thSub = (thSpiral + arcOff / 44.0 + 4 * Math.PI) % (2 * Math.PI);
+      const thSub = (th + arcOff / 44.0 + 4 * Math.PI) % (2 * Math.PI);
       const zSub = Math.min(height * 0.92, Math.max(height * 0.08, z + zOff));
       const uSub = zSub / height;
 
-      const subAmp = amp * (0.55 + rand() * 0.20);
-      const subRCirc = 22.0 + rand() * 8.0;
-      const subRZ = 18.0 + rand() * 6.0;
+      // Sub-lobe is 45% to 65% of parent amplitude, rounded and broad
+      const subAmp = amp * (0.45 + rand() * 0.20);
+      const subRCirc = 18.0 + rand() * 8.0; // 18 to 26 mm
+      const subRZ = 15.0 + rand() * 6.0;
 
       puffs.push({
         level: 1,
-        bankId: b,
+        bankId: i % 4,
         u: uSub,
         z: zSub,
         th: thSub,
@@ -90,25 +95,25 @@ export function generateCloudPuffCenters(
         haloWeight: 0.85,
       });
 
-      // Micro Cauliflower Florets (Level 2 "Child Florets")
+      // Intermediate Broccoli Florets (Level 2: 2 florets per sub-lobe, ~7-11mm diameter)
       if (floretScale > 0.1) {
         for (let k = 0; k < 2; k++) {
-          const floretAngle = (k * Math.PI + (rand() - 0.5) * 1.0) % (2 * Math.PI);
+          const floretAngle = (k * Math.PI + (rand() - 0.5) * 1.2) % (2 * Math.PI);
           const fDist = 0.50 + rand() * 0.35;
           const fArcOff = Math.cos(floretAngle) * (subRCirc * fDist);
-          const fZOff = Math.sin(floretAngle) * (subRZ * fDist * 0.80);
+          const fZOff = Math.sin(floretAngle) * (subRZ * fDist);
 
           const thFloret = (thSub + fArcOff / 44.0 + 4 * Math.PI) % (2 * Math.PI);
           const zFloret = Math.min(height * 0.94, Math.max(height * 0.06, zSub + fZOff));
           const uFloret = zFloret / height;
 
-          const fAmp = (floretScale / 2.4) * (1.8 + rand() * 1.2);
-          const fRCirc = 9.0 + rand() * 3.5;
-          const fRZ = 7.5 + rand() * 2.5;
+          const fAmp = (floretScale / 2.4) * (1.6 + rand() * 1.2); // ~1.6 to 2.8 mm
+          const fRCirc = 8.5 + rand() * 3.5; // 8.5 to 12 mm wide
+          const fRZ = 7.0 + rand() * 3.0;   // 7.0 to 10 mm tall
 
           puffs.push({
             level: 2,
-            bankId: b,
+            bankId: i % 4,
             u: uFloret,
             z: zFloret,
             th: thFloret,
@@ -122,12 +127,15 @@ export function generateCloudPuffCenters(
     }
   }
 
-  // Connecting atmospheric roll billows
-  const rollCount = 8;
-  for (let k = 0; k < rollCount; k++) {
-    const u = 0.10 + (k / rollCount) * 0.80;
-    const th = (k * 1.618 * 2 * Math.PI + (rand() - 0.5) * 0.5) % (2 * Math.PI);
-    const amp = (3.5 + rand() * 2.5) * ampScale;
+  // Tertiary atmospheric roll billows filling valleys
+  const tertiaryCount = 12;
+  for (let k = 0; k < tertiaryCount; k++) {
+    const u = 0.10 + rand() * 0.80;
+    const th = rand() * 2 * Math.PI;
+    const amp = (3.5 + rand() * 2.5) * ampScale; // 3.5 to 6.0 mm
+    const rCirc = 22.0 + rand() * 8.0;
+    const rZ = 16.0 + rand() * 6.0;
+
     puffs.push({
       level: 3,
       bankId: -1,
@@ -135,9 +143,9 @@ export function generateCloudPuffCenters(
       z: u * height,
       th,
       amp,
-      rCirc: 24.0 + rand() * 8.0,
-      rZ: 18.0 + rand() * 6.0,
-      haloWeight: 0.60,
+      rCirc,
+      rZ,
+      haloWeight: 0.65,
     });
   }
 
