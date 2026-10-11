@@ -9,6 +9,7 @@ import {
   evalStripAngle,
   evalVeinAngle,
 } from '../geometry/organicField';
+import { generateCloudPuffCenters, evalFluffyCloudField } from '../geometry/cloudGenerator';
 import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
@@ -341,6 +342,45 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
     geo.computeVertexNormals();
     if (activeParams?.lampArchetype === 'clouds' && part.id === 'body') {
+      const colors = new Float32Array(count * 3);
+      const puffs = generateCloudPuffCenters(
+        activeParams.organicSeed ?? 77,
+        h,
+        activeParams.cloudPuffDensity ?? 22,
+        activeParams.cloudPuffDepth ?? 12.0,
+        activeParams.cloudFloretScale ?? 2.4
+      );
+      const noise = createNoise3D(activeParams.organicSeed ?? 77);
+      const rimWeight = (activeParams.cloudRimLighting ?? 2.0) / 2.0;
+
+      for (let i = 0; i < count; i++) {
+        const x = positions[i * 3];
+        const y = positions[i * 3 + 1];
+        const z = positions[i * 3 + 2];
+        const r = Math.hypot(x, y);
+        const u = Math.max(0, Math.min(1, z / h));
+        const th = Math.atan2(y, x);
+
+        const { rInner, thickness, maxRimHalo } = evalFluffyCloudField(u, th, activeParams, puffs, noise);
+
+        if (r < rInner + 0.4) {
+          // Inside wall facing directly toward the central LED column
+          colors[i * 3] = 1.0;
+          colors[i * 3 + 1] = 0.95;
+          colors[i * 3 + 2] = 0.88;
+        } else {
+          // Outside wall: forward-scattered Beer-Lambert transmission through white PLA thickness
+          const sssR = Math.exp(-0.24 * thickness) + maxRimHalo * 0.32 * rimWeight;
+          const sssG = Math.exp(-0.35 * thickness) + maxRimHalo * 0.28 * rimWeight;
+          const sssB = Math.exp(-0.55 * thickness) + maxRimHalo * 0.22 * rimWeight;
+
+          colors[i * 3] = Math.min(1.30, sssR * 1.15);
+          colors[i * 3 + 1] = Math.min(1.20, sssG * 1.12);
+          colors[i * 3 + 2] = Math.min(1.10, sssB * 1.05);
+        }
+      }
+
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       return geo; // Preserve 100% smooth continuous vertex normals on organic cloud shade
     }
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
@@ -768,7 +808,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     studioGroup.visible = !isNight || isCutaway;
     glowGroup.visible = isNight || isCutaway;
     electronicsGroup.visible = isCutaway;
-    cameraLight.intensity = isCutaway ? 2.4 : 0.20;
+    cameraLight.intensity = isCutaway ? 2.4 : (isNight ? 0.12 : 0.20);
 
     renderer.clippingPlanes = isCutaway ? [clipPlane] : [];
 
@@ -784,7 +824,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
       if (activeParams?.lampArchetype === 'clouds') {
         if (id === 'body') {
-          // Cloud shade with broccoli flourette micro-texture & cavity occlusion
+          // Cloud shade with broccoli flourette micro-texture & physical lithophane SSS
           const { normal: normalTex, cavity: cavityTex } = getCloudFlouretteTextures();
           const h = activeParams?.height ?? 180.0;
           const rMean = (((activeParams?.baseRadius ?? 44) + (activeParams?.topRadius ?? 38)) / 2) + 5.0;
@@ -802,6 +842,45 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           mat.normalMap = normalStrength > 0.01 ? normalTex : null;
           mat.normalScale.set(normalStrength, normalStrength);
           mat.map = normalStrength > 0.01 ? cavityTex : null;
+          mat.vertexColors = true;
+
+          if (!(mat as any).userData.hasSssShader) {
+            (mat as any).userData.hasSssShader = true;
+            mat.customProgramCacheKey = () => 'cloud_litho_sss_v1';
+            mat.onBeforeCompile = (shader) => {
+              shader.uniforms.uIsNight = { value: isNight ? 1.0 : 0.0 };
+              (mat as any).userData.shader = shader;
+
+              shader.fragmentShader = `uniform float uIsNight;\n` + shader.fragmentShader;
+
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `
+                #if defined( USE_COLOR_ALPHA )
+                  diffuseColor *= vColor;
+                #elif defined( USE_COLOR )
+                  diffuseColor.rgb *= mix(vec3(1.0), vColor.rgb, uIsNight * 0.35);
+                #endif
+                `
+              );
+
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <emissivemap_fragment>',
+                `
+                #include <emissivemap_fragment>
+                #ifdef USE_COLOR
+                  // Physical Lithophane SSS: internal emissive radiance attenuated by wall thickness
+                  totalEmissiveRadiance *= vColor.rgb;
+                #endif
+                `
+              );
+            };
+          }
+
+          if ((mat as any).userData.shader) {
+            (mat as any).userData.shader.uniforms.uIsNight.value = isNight ? 1.0 : 0.0;
+          }
+
           if (isCutaway) {
             mesh.visible = currentDiffuserMode !== 'hidden';
             mat.transparent = currentDiffuserMode === 'ghost';
@@ -818,7 +897,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
             if (isNight) {
               mat.emissive = lColor;
               mat.emissiveMap = null;
-              mat.emissiveIntensity = intensity * 0.45;
+              mat.emissiveIntensity = intensity * 1.55;
             } else {
               mat.emissive = new THREE.Color(0x000000);
               mat.emissiveMap = null;
@@ -963,15 +1042,15 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         vl.position.set(0, 0, zLight);
       });
       nightKeyLight.color = lColor;
-      nightKeyLight.intensity = params.lightIntensity * 0.85;
+      nightKeyLight.intensity = params.lightIntensity * 0.22;
       nightKeyLight.position.set(80, -100, params.height * 0.65);
 
-      nightRimLight.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
-      nightRimLight.intensity = params.lightIntensity * 1.15;
+      nightRimLight.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.35);
+      nightRimLight.intensity = params.lightIntensity * 0.45;
       nightRimLight.position.set(-80, 110, params.height * 0.80);
 
       nightFillLight.color = lColor;
-      nightFillLight.intensity = params.lightIntensity * 0.40;
+      nightFillLight.intensity = params.lightIntensity * 0.15;
       nightFillLight.position.set(-100, -80, params.height * 0.35);
     } else {
       const rMid = (params.baseRadius + params.topRadius) * 0.45;
@@ -1065,13 +1144,13 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     deskGlowLight.intensity = intensity * 1.6;
 
     nightKeyLight.color = color;
-    nightKeyLight.intensity = intensity * 0.85;
+    nightKeyLight.intensity = intensity * 0.22;
 
-    nightRimLight.color = color.clone().lerp(new THREE.Color('#ffffff'), 0.25);
-    nightRimLight.intensity = intensity * 1.15;
+    nightRimLight.color = color.clone().lerp(new THREE.Color('#ffffff'), 0.35);
+    nightRimLight.intensity = intensity * 0.45;
 
     nightFillLight.color = color;
-    nightFillLight.intensity = intensity * 0.40;
+    nightFillLight.intensity = intensity * 0.15;
 
     // Dynamically update cloud shade body glow and intensity in real time
     const bodyMesh = partMeshes.get('body');
@@ -1080,7 +1159,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       if (activeParams?.lampArchetype === 'clouds') {
         if (currentMode === 'night') {
           mat.emissive = color;
-          mat.emissiveIntensity = intensity * 0.45;
+          mat.emissiveIntensity = intensity * 1.55;
         } else if (currentMode === 'cutaway') {
           mat.emissive = color;
           mat.emissiveIntensity = intensity * 0.45;
