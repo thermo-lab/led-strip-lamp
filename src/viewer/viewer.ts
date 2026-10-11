@@ -10,6 +10,7 @@ import {
   evalVeinAngle,
 } from '../geometry/organicField';
 import { generateCloudPuffCenters, evalFluffyCloudField } from '../geometry/cloudGenerator';
+import { generateHorizontalCloudPuffs, evalHorizontalCloudField } from '../geometry/horizontalCloudGenerator';
 import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
@@ -341,33 +342,63 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
     geo.computeVertexNormals();
-    if (activeParams?.lampArchetype === 'clouds' && part.id === 'body') {
+    if ((activeParams?.lampArchetype === 'clouds' || activeParams?.lampArchetype === 'horizon') && part.id === 'body') {
       const transmittances = new Float32Array(count);
-      const puffs = generateCloudPuffCenters(
-        activeParams.organicSeed ?? 77,
-        h,
-        activeParams.cloudPuffDensity ?? 22,
-        activeParams.cloudPuffDepth ?? 12.0,
-        activeParams.cloudFloretScale ?? 2.4
-      );
-      const noise = createNoise3D(activeParams.organicSeed ?? 77);
       const tMin = activeParams.cloudMinThickness ?? 0.8;
       const tMax = activeParams.cloudMaxThickness ?? 6.4;
 
-      for (let i = 0; i < count; i++) {
-        const x = positions[i * 3];
-        const y = positions[i * 3 + 1];
-        const z = positions[i * 3 + 2];
-        const u = Math.max(0, Math.min(1, z / h));
-        const th = Math.atan2(y, x);
+      if (activeParams.lampArchetype === 'horizon') {
+        const w = activeParams.horizonWidth ?? 220;
+        const d = activeParams.horizonDepth ?? 85;
+        const hH = activeParams.horizonHeight ?? 105;
+        const puffs = generateHorizontalCloudPuffs(
+          activeParams.organicSeed ?? 77,
+          w,
+          d,
+          hH,
+          activeParams.cloudPuffDepth ?? 12.0,
+          activeParams.cloudFloretScale ?? 2.4
+        );
+        const noise = createNoise3D(activeParams.organicSeed ?? 77);
 
-        const { thickness } = evalFluffyCloudField(u, th, activeParams, puffs, noise);
-        const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
+        for (let i = 0; i < count; i++) {
+          const x = positions[i * 3];
+          const y = positions[i * 3 + 1];
+          const z = positions[i * 3 + 2];
+          const u = Math.max(0, Math.min(0.96, z / hH));
+          const th = Math.atan2(y, x);
 
-        // Physical Transmittance: 1.0 at thin glowing intersections (0.8mm)
-        // Dynamically scaled by thickness range (tMax - tMin) for rich sculptural contrast
-        const depthSpread = Math.min(0.80, 0.45 + (tMax - tMin) * 0.055);
-        transmittances[i] = 1.0 - depthSpread * tNorm;
+          const { thickness } = evalHorizontalCloudField(u, th, activeParams, puffs, noise);
+          const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
+
+          const depthSpread = Math.min(0.80, 0.45 + (tMax - tMin) * 0.055);
+          transmittances[i] = 1.0 - depthSpread * tNorm;
+        }
+      } else {
+        const puffs = generateCloudPuffCenters(
+          activeParams.organicSeed ?? 77,
+          h,
+          activeParams.cloudPuffDensity ?? 22,
+          activeParams.cloudPuffDepth ?? 12.0,
+          activeParams.cloudFloretScale ?? 2.4
+        );
+        const noise = createNoise3D(activeParams.organicSeed ?? 77);
+
+        for (let i = 0; i < count; i++) {
+          const x = positions[i * 3];
+          const y = positions[i * 3 + 1];
+          const z = positions[i * 3 + 2];
+          const u = Math.max(0, Math.min(1, z / h));
+          const th = Math.atan2(y, x);
+
+          const { thickness } = evalFluffyCloudField(u, th, activeParams, puffs, noise);
+          const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
+
+          // Physical Transmittance: 1.0 at thin glowing intersections (0.8mm)
+          // Dynamically scaled by thickness range (tMax - tMin) for rich sculptural contrast
+          const depthSpread = Math.min(0.80, 0.45 + (tMax - tMin) * 0.055);
+          transmittances[i] = 1.0 - depthSpread * tNorm;
+        }
       }
 
       geo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
@@ -427,7 +458,32 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const dieBoxGeo = new THREE.BoxGeometry(2.6, 0.4, 2.6);
 
     // Build strip segments based on archetype
-    if (params.lampArchetype === 'clouds') {
+    if (params.lampArchetype === 'horizon') {
+      const width = params.horizonWidth ?? 220;
+      const trackW = width - 36.0;
+      const nLeds = Math.max(6, Math.floor((trackW - 12.0) / 16.67));
+
+      // Straight horizontal flex PCB strip along X at Z = -3.2 (seated inside reflector mandrel)
+      const stripGeo = new THREE.PlaneGeometry(trackW, 10.0);
+      const stripMesh = new THREE.Mesh(stripGeo, stripTapeMat);
+      stripMesh.position.set(0, 0, -3.2);
+      // Plane default normal points +Z (upward into hollow cloud shade)
+      electronicsGroup.add(stripMesh);
+
+      // Discrete 5050 LED packages placed at 16.6667mm pitch along X
+      const startX = -((nLeds - 1) * 16.67) / 2;
+      for (let i = 0; i < nLeds; i++) {
+        const xLed = startX + i * 16.67;
+
+        const ledMesh = new THREE.Mesh(ledBoxGeo, ledBodyMat);
+        ledMesh.position.set(xLed, 0, -2.5);
+        electronicsGroup.add(ledMesh);
+
+        const dieMesh = new THREE.Mesh(dieBoxGeo, ledDieMat);
+        dieMesh.position.set(xLed, 0, -1.8);
+        electronicsGroup.add(dieMesh);
+      }
+    } else if (params.lampArchetype === 'clouds') {
       const nFacets = params.cloudColumnFacets ?? 3;
       const colRadius = nFacets === 3 ? 18.0 : 16.0;
       const colH = height - 10.0;
@@ -558,9 +614,16 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   }
 
   // Model ESP32-C6 SuperMini board nestled in dedicated compliant base cradle pocket
-    const baseOuterR = baseRadius + 4.0;
     const boardGroup = new THREE.Group();
-    boardGroup.position.set(baseOuterR - 16.75, 0, -11.6);
+    if (params.lampArchetype === 'horizon') {
+      const depth = params.horizonDepth ?? 85;
+      const plinthD = depth + 14.0;
+      boardGroup.position.set(0, -plinthD / 2 + 22.0, -11.0);
+      boardGroup.rotation.z = -Math.PI / 2; // USB port facing rear -Y
+    } else {
+      const baseOuterR = baseRadius + 4.0;
+      boardGroup.position.set(baseOuterR - 16.75, 0, -11.6);
+    }
 
     const pcbGeo = new THREE.BoxGeometry(22.5, 18.0, 1.2);
     const pcbMat = new THREE.MeshStandardMaterial({ color: 0x081a30, roughness: 0.4 });
@@ -593,7 +656,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     electronicsGroup.add(boardGroup);
 
     // 3D Physical Wiring Harness: 3-conductor colored wire ribbons (Red +5V, Black GND, Green DATA)
-    // Connecting each of the 3 strip funnels through the floor raceways directly into the ESP32 pin headers
     const redWireMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35 });
     const blackWireMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.4 });
     const greenWireMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.35 });
@@ -601,10 +663,30 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const wireMaterials = [redWireMat, blackWireMat, greenWireMat];
     const wireOffsets = [-0.65, 0, 0.65];
 
-    const bx = baseOuterR - 16.75;
+    const bx = baseRadius + 4.0 - 16.75;
     const bz = -10.4;
 
-    if (params.lampArchetype === 'clouds') {
+    if (params.lampArchetype === 'horizon') {
+      const width = params.horizonWidth ?? 220;
+      const depth = params.horizonDepth ?? 85;
+      const plinthD = depth + 14.0;
+      const espY = -plinthD / 2 + 22.0;
+      const trackW = width - 36.0;
+      const wireStartX = -trackW / 2 + 4.0;
+
+      // Connect 3 colored wires from horizontal strip end through mandrel drop hole to ESP32 board
+      for (let w = 0; w < 3; w++) {
+        const off = wireOffsets[w];
+        const p0 = new THREE.Vector3(wireStartX + off * 2.0, 0, -3.2);
+        const p1 = new THREE.Vector3(wireStartX + off * 2.0, 0, -11.0);
+        const p2 = new THREE.Vector3(wireStartX * 0.4, espY * 0.5 + off * 2.0, -12.0);
+        const p3 = new THREE.Vector3(off * 5.0, espY + 7.5, -11.0);
+        const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3]);
+        const wireGeo = new THREE.TubeGeometry(curve, 24, 0.35, 8, false);
+        const wireMesh = new THREE.Mesh(wireGeo, wireMaterials[w]);
+        electronicsGroup.add(wireMesh);
+      }
+    } else if (params.lampArchetype === 'clouds') {
       // Connect wires from center column socket to ESP32 board
       for (let w = 0; w < 3; w++) {
         const off = wireOffsets[w];
@@ -812,13 +894,15 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       mat.normalMap = null;
       mat.map = null;
 
-      if (activeParams?.lampArchetype === 'clouds') {
+      if (activeParams?.lampArchetype === 'clouds' || activeParams?.lampArchetype === 'horizon') {
         if (id === 'body') {
           // Cloud shade with broccoli flourette micro-texture & physical lithophane SSS
           const { normal: normalTex, cavity: cavityTex } = getCloudFlouretteTextures();
-          const h = activeParams?.height ?? 180.0;
-          const rMean = (((activeParams?.baseRadius ?? 44) + (activeParams?.topRadius ?? 38)) / 2) + 5.0;
-          const circ = 2 * Math.PI * rMean;
+          const isHorizon = activeParams?.lampArchetype === 'horizon';
+          const h = isHorizon ? (activeParams?.horizonHeight ?? 105.0) : (activeParams?.height ?? 180.0);
+          const circ = isHorizon
+            ? ((activeParams?.horizonWidth ?? 220) + (activeParams?.horizonDepth ?? 85)) * 1.5
+            : ((((activeParams?.baseRadius ?? 44) + (activeParams?.topRadius ?? 38)) / 2) + 5.0) * 2 * Math.PI;
           const beadSizeMm = 1.85; // 1.85mm flourette bud diameter
           const tileSizeMm = 16 * beadSizeMm; // 16 beads per texture tile = ~29.6mm
 
@@ -932,10 +1016,10 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           mesh.visible = true;
           mat.transparent = false;
           mat.opacity = 1.0;
-          mat.color = new THREE.Color(0x242830);
+          mat.color = new THREE.Color(activeParams?.lampArchetype === 'horizon' ? 0x1a1d24 : 0x242830);
           mat.emissive = new THREE.Color(0x000000);
           mat.emissiveIntensity = 0;
-          mat.roughness = 0.5;
+          mat.roughness = 0.55;
           mat.needsUpdate = true;
         }
       } else {
@@ -996,7 +1080,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       const geo = partToThreeGeometry(p);
       let mat: THREE.MeshStandardMaterial;
 
-      if (params.lampArchetype === 'clouds') {
+      if (params.lampArchetype === 'clouds' || params.lampArchetype === 'horizon') {
         if (p.id === 'body') {
           mat = new THREE.MeshStandardMaterial({
             color: new THREE.Color('#ffffff'),
@@ -1006,8 +1090,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           });
         } else if (p.id === 'veins') {
           mat = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(0x242830),
-            roughness: 0.5,
+            color: new THREE.Color(params.lampArchetype === 'horizon' ? 0x1a1d24 : 0x242830),
+            roughness: 0.55,
             metalness: 0.1,
             side: THREE.DoubleSide,
           });
@@ -1046,14 +1130,40 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       mesh.castShadow = true;
       // The translucent cloud shade casts shadows onto the pedestal desk and base cradle,
       // but does not self-receive harsh directional shadow acne across its own thin curved shell
-      mesh.receiveShadow = !(params.lampArchetype === 'clouds' && p.id === 'body');
+      mesh.receiveShadow = !((params.lampArchetype === 'clouds' || params.lampArchetype === 'horizon') && p.id === 'body');
       scene.add(mesh);
       partMeshes.set(p.id, mesh);
     });
 
     rebuildElectronicsModels(params);
 
-    if (params.lampArchetype === 'clouds') {
+    if (params.lampArchetype === 'horizon') {
+      const w = params.horizonWidth ?? 220;
+      const h = params.horizonHeight ?? 105;
+      const xSpan = w - 50;
+
+      veinLights.forEach((vl, idx) => {
+        const t = (idx / (veinLights.length - 1)) - 0.5; // -0.5 to 0.5
+        const xLight = t * xSpan;
+        vl.color = lColor;
+        vl.intensity = params.lightIntensity * 3.4; // Drives physical forward SSS translucency
+        vl.position.set(xLight, 0, 16.0); // Inside hollow cloud cavity pointing upward
+      });
+
+      nightKeyLight.color = lColor;
+      nightKeyLight.intensity = params.lightIntensity * 0.18;
+      nightKeyLight.position.set(80, -110, h * 0.75);
+
+      nightRimLight.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.35);
+      nightRimLight.intensity = params.lightIntensity * 0.38;
+      nightRimLight.position.set(-80, 110, h * 0.85);
+
+      nightFillLight.color = lColor;
+      nightFillLight.intensity = params.lightIntensity * 0.12;
+      nightFillLight.position.set(-110, -80, h * 0.40);
+
+      controls.target.set(0, 0, h * 0.45);
+    } else if (params.lampArchetype === 'clouds') {
       veinLights.forEach((vl, idx) => {
         const zLight = (idx / veinLights.length) * (params.height - 24) + 18;
         vl.color = lColor;
@@ -1071,6 +1181,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       nightFillLight.color = lColor;
       nightFillLight.intensity = params.lightIntensity * 0.10;
       nightFillLight.position.set(-100, -80, params.height * 0.35);
+
+      controls.target.set(0, 0, params.height * 0.45);
     } else {
       const rMid = (params.baseRadius + params.topRadius) * 0.45;
       veinLights.forEach((vl, idx) => {
@@ -1080,12 +1192,12 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         vl.intensity = params.lightIntensity * 1.6;
         vl.position.set(rMid * Math.cos(th), rMid * Math.sin(th), zLight);
       });
+      controls.target.set(0, 0, params.height * 0.45);
     }
 
     deskGlowLight.color = lColor;
     deskGlowLight.intensity = params.lightIntensity * 1.6;
 
-    controls.target.set(0, 0, params.height * 0.45);
     applyViewStyle();
   }
 
@@ -1175,7 +1287,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const bodyMesh = partMeshes.get('body');
     if (bodyMesh) {
       const mat = bodyMesh.material as THREE.MeshStandardMaterial;
-      if (activeParams?.lampArchetype === 'clouds') {
+      if (activeParams?.lampArchetype === 'clouds' || activeParams?.lampArchetype === 'horizon') {
         if (currentMode === 'night') {
           mat.emissive = color;
           mat.emissiveIntensity = intensity * 0.40;
@@ -1189,7 +1301,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     const veinMesh = partMeshes.get('veins');
     if (veinMesh) {
       const mat = veinMesh.material as THREE.MeshStandardMaterial;
-      if (activeParams?.lampArchetype !== 'clouds') {
+      if (activeParams?.lampArchetype !== 'clouds' && activeParams?.lampArchetype !== 'horizon') {
         mat.color = color.clone().lerp(new THREE.Color('#ffffff'), 0.25);
         mat.emissive = color;
         mat.emissiveIntensity = currentMode === 'night' ? intensity * 2.2 : (currentMode === 'cutaway' ? intensity * 1.5 : 0.8);

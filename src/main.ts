@@ -5,7 +5,11 @@ import { export3MF } from './export/threemfExport';
 import { exportSTL } from './export/stlExport';
 
 const defaultParams: LampParameters = {
-  lampArchetype: 'clouds', // Default to the new Fluffy Cloud Column variant
+  lampArchetype: 'horizon', // Default to the new Panoramic Horizon Cloud Bank
+  horizonWidth: 220,
+  horizonDepth: 85,
+  horizonHeight: 105,
+
   height: 180,
   baseRadius: 44,
   topRadius: 38,

@@ -2,6 +2,7 @@ import Module from 'manifold-3d';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
 import { generateLampGeometry } from '../geometry/lampGenerator';
 import { generateCloudLampGeometry } from '../geometry/cloudGenerator';
+import { generateHorizontalCloudLampGeometry } from '../geometry/horizontalCloudGenerator';
 import { calculateMetrics } from '../geometry/metrics';
 import type { GeometryRequest, GeometryResponse } from '../types';
 
@@ -26,8 +27,10 @@ self.onmessage = async (e: MessageEvent<GeometryRequest>) => {
     const msg = e.data;
 
     if (msg.type === 'generate') {
-      const isClouds = msg.params.lampArchetype === 'clouds';
-      const parts = isClouds
+      const archetype = msg.params.lampArchetype;
+      const parts = archetype === 'horizon'
+        ? generateHorizontalCloudLampGeometry(wasm, msg.params)
+        : archetype === 'clouds'
         ? generateCloudLampGeometry(wasm, msg.params)
         : generateLampGeometry(wasm, msg.params);
       const metrics = calculateMetrics(msg.params);

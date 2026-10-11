@@ -39,49 +39,84 @@ export function setupUI(
     });
   };
 
-  // Archetype Selectors (Clouds vs Veins)
+  // Archetype Selectors (Horizon vs Clouds vs Veins)
   const archetypeButtons = document.querySelectorAll<HTMLButtonElement>('.archetype-btn');
   const sectionCloudControls = document.getElementById('section-cloud-controls');
+  const presetsHorizon = document.getElementById('presets-horizon');
   const presetsClouds = document.getElementById('presets-clouds');
+  const presetsVeins = document.getElementById('presets-veins');
+  const sectionHorizonDimensions = document.getElementById('section-horizon-dimensions');
+  const sectionSilhouetteDimensions = document.getElementById('section-silhouette-dimensions');
+  const groupCloudColumnFacets = document.getElementById('group-cloud-column-facets');
   const sectionGrowthControls = document.getElementById('section-growth-controls');
   const sectionSurfaceControls = document.getElementById('section-surface-controls');
   const sectionVeinControls = document.getElementById('section-vein-controls');
-  const presetsVeins = document.getElementById('presets-veins');
   const groupTwistAngle = document.getElementById('group-twist-angle');
   const btnExport3mfLabel = document.getElementById('btn-export-3mf-label');
   const lblStlBody = document.getElementById('lbl-stl-body');
   const lblStlVeins = document.getElementById('lbl-stl-veins');
+  const calloutSpecsHorizon = document.getElementById('callout-specs-horizon');
   const calloutSpecsClouds = document.getElementById('callout-specs-clouds');
   const calloutSpecsVeins = document.getElementById('callout-specs-veins');
   const calloutBadge = document.getElementById('callout-badge');
   const calloutSubtitle = document.getElementById('callout-subtitle');
   const calloutNoteText = document.getElementById('callout-note-text');
 
-  const updateArchetypeUI = (archetype: 'clouds' | 'veins') => {
+  const updateArchetypeUI = (archetype: 'horizon' | 'clouds' | 'veins') => {
     current.lampArchetype = archetype;
     archetypeButtons.forEach((b) => b.classList.toggle('active', b.dataset.archetype === archetype));
 
+    const isHorizon = archetype === 'horizon';
     const isClouds = archetype === 'clouds';
-    if (sectionCloudControls) sectionCloudControls.style.display = isClouds ? 'block' : 'none';
+    const isVeins = archetype === 'veins';
+
+    if (presetsHorizon) presetsHorizon.style.display = isHorizon ? 'block' : 'none';
     if (presetsClouds) presetsClouds.style.display = isClouds ? 'block' : 'none';
-    if (sectionGrowthControls) sectionGrowthControls.style.display = isClouds ? 'none' : 'block';
-    if (sectionSurfaceControls) sectionSurfaceControls.style.display = isClouds ? 'none' : 'block';
-    if (sectionVeinControls) sectionVeinControls.style.display = isClouds ? 'none' : 'block';
-    if (presetsVeins) presetsVeins.style.display = isClouds ? 'none' : 'block';
-    if (groupTwistAngle) groupTwistAngle.style.display = isClouds ? 'none' : 'block';
+    if (presetsVeins) presetsVeins.style.display = isVeins ? 'block' : 'none';
+
+    if (sectionHorizonDimensions) sectionHorizonDimensions.style.display = isHorizon ? 'block' : 'none';
+    if (sectionSilhouetteDimensions) sectionSilhouetteDimensions.style.display = isHorizon ? 'none' : 'block';
+
+    if (sectionCloudControls) sectionCloudControls.style.display = (isHorizon || isClouds) ? 'block' : 'none';
+    if (groupCloudColumnFacets) groupCloudColumnFacets.style.display = isClouds ? 'block' : 'none';
+
+    if (sectionGrowthControls) sectionGrowthControls.style.display = isVeins ? 'block' : 'none';
+    if (sectionSurfaceControls) sectionSurfaceControls.style.display = isVeins ? 'block' : 'none';
+    if (sectionVeinControls) sectionVeinControls.style.display = isVeins ? 'block' : 'none';
+    if (groupTwistAngle) groupTwistAngle.style.display = isVeins ? 'block' : 'none';
 
     if (btnExport3mfLabel) {
-      btnExport3mfLabel.textContent = isClouds ? 'Download Cloud Column 3MF' : 'Download Multi-Material 3MF';
+      btnExport3mfLabel.textContent = isHorizon
+        ? 'Download Horizon Cloud 3MF'
+        : isClouds
+        ? 'Download Cloud Pillar 3MF'
+        : 'Download Multi-Material 3MF';
     }
-    if (lblStlBody) lblStlBody.textContent = isClouds ? 'Cloud Shade' : 'Body';
-    if (lblStlVeins) lblStlVeins.textContent = isClouds ? 'LED Spine' : 'Veins';
+    if (lblStlBody) lblStlBody.textContent = isHorizon ? 'Cloud Canopy' : (isClouds ? 'Cloud Shade' : 'Body');
+    if (lblStlVeins) lblStlVeins.textContent = isHorizon ? 'LED Mandrel' : (isClouds ? 'LED Spine' : 'Veins');
 
+    if (calloutSpecsHorizon) calloutSpecsHorizon.style.display = isHorizon ? 'block' : 'none';
     if (calloutSpecsClouds) calloutSpecsClouds.style.display = isClouds ? 'block' : 'none';
-    if (calloutSpecsVeins) calloutSpecsVeins.style.display = isClouds ? 'none' : 'block';
-    if (calloutBadge) calloutBadge.textContent = isClouds ? 'Lithophane Cloud Architecture' : 'WS2812B Captive Track';
-    if (calloutSubtitle) calloutSubtitle.textContent = isClouds ? 'White PLA Shade + Central LED Spine' : '10.0mm Flex Strip Carrier';
+    if (calloutSpecsVeins) calloutSpecsVeins.style.display = isVeins ? 'block' : 'none';
+
+    if (calloutBadge) {
+      calloutBadge.textContent = isHorizon
+        ? 'Panoramic Horizon Cloud Bank'
+        : isClouds
+        ? 'Lithophane Cloud Architecture'
+        : 'WS2812B Captive Track';
+    }
+    if (calloutSubtitle) {
+      calloutSubtitle.textContent = isHorizon
+        ? 'White PLA Canopy + Upward-Firing Reflector Mandrel'
+        : isClouds
+        ? 'White PLA Shade + Central LED Spine'
+        : '10.0mm Flex Strip Carrier';
+    }
     if (calloutNoteText) {
-      calloutNoteText.textContent = isClouds
+      calloutNoteText.textContent = isHorizon
+        ? '🌄 Monolithic horizontal cloud canopy printing flat on PEI bed (Z=0). Sleek plinth houses upward-facing LEDs for dramatic uplighting through glowing inter-bank canyons!'
+        : isClouds
         ? '☁️ Single-toolhead white PLA print. No purge towers or color changes! The central column holds outward-facing LED strips that illuminate the clouds from within.'
         : '🔒 Strip feeds through flared bottom throat at Z=0. Wires route through recessed floor raceways straight into ESP32 pin headers with zero bayonet pinch.';
     }
@@ -89,11 +124,16 @@ export function setupUI(
 
   archetypeButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
-      const arch = (btn.dataset.archetype as 'clouds' | 'veins') || 'clouds';
+      const arch = (btn.dataset.archetype as 'horizon' | 'clouds' | 'veins') || 'horizon';
       updateArchetypeUI(arch);
       handlers.onParamChange(current);
     });
   });
+
+  // Bind Horizon Dimension Sliders
+  bindSlider('param-horizon-width', 'horizonWidth', (v) => `${Math.round(v)} mm`);
+  bindSlider('param-horizon-depth', 'horizonDepth', (v) => `${Math.round(v)} mm`);
+  bindSlider('param-horizon-height', 'horizonHeight', (v) => `${Math.round(v)} mm`);
 
   // Bind Dimension Sliders
   bindSlider('param-height', 'height', (v) => `${v} mm`);
@@ -135,6 +175,71 @@ export function setupUI(
       handlers.onParamChange(current);
     });
   }
+
+  // Horizon Archetype Presets
+  const horizonPresetButtons = document.querySelectorAll<HTMLButtonElement>('.preset-horizon-btn');
+  horizonPresetButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      horizonPresetButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const p = btn.dataset.horizonPreset;
+      if (p === 'sunset') {
+        current.horizonWidth = 240;
+        current.horizonDepth = 85;
+        current.horizonHeight = 105;
+        current.cloudPuffDensity = 24;
+        current.cloudPuffDepth = 13.5;
+        current.cloudFloretScale = 2.6;
+        current.cloudMinThickness = 0.85;
+        current.cloudMaxThickness = 5.6;
+        current.cloudTurbulence = 0.35;
+        current.cloudRimLighting = 2.2;
+        current.lightColor = '#ff793f';
+        current.lightIntensity = 1.4;
+      } else if (p === 'cumulus') {
+        current.horizonWidth = 220;
+        current.horizonDepth = 85;
+        current.horizonHeight = 105;
+        current.cloudPuffDensity = 22;
+        current.cloudPuffDepth = 12.0;
+        current.cloudFloretScale = 2.4;
+        current.cloudMinThickness = 0.95;
+        current.cloudMaxThickness = 4.8;
+        current.cloudTurbulence = 0.35;
+        current.cloudRimLighting = 2.0;
+        current.lightColor = '#ff9d3b';
+        current.lightIntensity = 1.2;
+      } else if (p === 'thunder') {
+        current.horizonWidth = 250;
+        current.horizonDepth = 90;
+        current.horizonHeight = 115;
+        current.cloudPuffDensity = 28;
+        current.cloudPuffDepth = 15.0;
+        current.cloudFloretScale = 3.5;
+        current.cloudMinThickness = 0.80;
+        current.cloudMaxThickness = 6.2;
+        current.cloudTurbulence = 0.45;
+        current.cloudRimLighting = 2.4;
+        current.lightColor = '#48dbfb';
+        current.lightIntensity = 1.5;
+      } else if (p === 'twilight') {
+        current.horizonWidth = 200;
+        current.horizonDepth = 80;
+        current.horizonHeight = 95;
+        current.cloudPuffDensity = 20;
+        current.cloudPuffDepth = 10.5;
+        current.cloudFloretScale = 2.0;
+        current.cloudMinThickness = 1.0;
+        current.cloudMaxThickness = 4.2;
+        current.cloudTurbulence = 0.25;
+        current.cloudRimLighting = 1.8;
+        current.lightColor = '#ff9ff3';
+        current.lightIntensity = 1.1;
+      }
+      syncAllUIInputs();
+      handlers.onParamChange(current);
+    });
+  });
 
   // Cloud Archetype Presets
   const cloudPresetButtons = document.querySelectorAll<HTMLButtonElement>('.preset-cloud-btn');
@@ -255,6 +360,9 @@ export function setupUI(
       if (valBadge && format) valBadge.textContent = format(val);
     };
 
+    updateInput('param-horizon-width', current.horizonWidth ?? 220, (v) => `${Math.round(v)} mm`);
+    updateInput('param-horizon-depth', current.horizonDepth ?? 85, (v) => `${Math.round(v)} mm`);
+    updateInput('param-horizon-height', current.horizonHeight ?? 105, (v) => `${Math.round(v)} mm`);
     updateInput('param-height', current.height, (v) => `${v} mm`);
     updateInput('param-base-radius', current.baseRadius, (v) => `${v} mm`);
     updateInput('param-top-radius', current.topRadius, (v) => `${v} mm`);

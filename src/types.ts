@@ -1,10 +1,10 @@
 export type VeinRelief = 'flush' | 'recessed' | 'proud';
 export type VeinPattern = 'continuous' | 'segmented';
 export type SurfaceStyle = 'fluted' | 'strata' | 'basalt' | 'organic';
-export type LampArchetype = 'veins' | 'clouds';
+export type LampArchetype = 'veins' | 'clouds' | 'horizon';
 
 export interface LampParameters {
-  lampArchetype?: LampArchetype; // 'veins' (default organic veined lamp) or 'clouds' (lithophane cloud column)
+  lampArchetype?: LampArchetype; // 'veins' (organic veined lamp), 'clouds' (cloud column), or 'horizon' (panoramic horizontal cloud bank)
 
   // Overall Dimensions
   height: number;             // Total height of monolithic shade (mm), 120 - 240
@@ -13,6 +13,11 @@ export interface LampParameters {
   waistRatio: number;         // Waist curvature ratio (0.65 - 1.35)
   wallThickness: number;      // Nominal wall thickness (mm), 3.5 - 6.0
   twistAngle: number;         // Total helical twist from base to top (degrees), -180 to 180
+
+  // Horizontal Cloud Bank Parameters (when lampArchetype === 'horizon')
+  horizonWidth?: number;      // Total horizontal width in mm (160 to 280, default 220)
+  horizonDepth?: number;      // Depth in mm (60 to 120, default 85)
+  horizonHeight?: number;     // Height in mm (70 to 150, default 105)
 
   // Surface Texture & Organic Growth
   growthMode: 'organic' | 'geometric' | 'vortex' | 'mycelium';
@@ -24,7 +29,7 @@ export interface LampParameters {
   fluteCount: number;         // Outer fluted ribs (0 to 32)
   fluteDepth: number;         // Depth of fluted ridges (mm), 0 to 4.0
 
-  // Cloud Column Morphology (when lampArchetype === 'clouds')
+  // Cloud Morphology (when lampArchetype === 'clouds' or 'horizon')
   cloudPuffDensity?: number;    // Number of puff clusters (20 to 50)
   cloudPuffDepth?: number;      // Macro puff bulge amplitude in mm (4.0 to 16.0 mm)
   cloudFloretScale?: number;    // Intermediate floret cluster scale in mm (0.0 to 6.0 mm, diameter ~7-10mm)

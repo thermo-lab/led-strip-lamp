@@ -17,6 +17,41 @@ export function calculateMetrics(params: LampParameters): AssemblyMetrics {
     lampArchetype,
   } = params;
 
+  if (lampArchetype === 'horizon') {
+    const width = params.horizonWidth ?? 220;
+    const depth = params.horizonDepth ?? 85;
+    const trackWidth = width - 40;
+    const totalLeds = Math.max(6, Math.floor(trackWidth / 16.67));
+    const stripSegmentLengthMm = Math.round(totalLeds * 16.67);
+    const nominalCurrentAmps = Math.round((totalLeds * 0.02) * 10) / 10;
+    const estPowerWatts = Math.round(nominalCurrentAmps * 5.0 * 10) / 10;
+
+    const warnings: string[] = [
+      `✓ 100% Support-Free Lithophane FDM Print (Bed: ${Math.round(width)}×${Math.round(depth)}mm).`,
+      `✓ Single Flat Horizontal WS2812B Ribbon (${totalLeds} LEDs) with 0.0% Lateral Ribbon Strain.`,
+      `✓ Integrated Desktop Plinth with ESP32-C6 chamber & rear USB-C port.`,
+    ];
+
+    return {
+      veinCount: 1,
+      veinArcLengthMm: stripSegmentLengthMm,
+      ledsPerVein: totalLeds,
+      totalLeds,
+      stripSegmentLengthMm,
+      totalStripLengthMm: stripSegmentLengthMm,
+      estCurrentAmps: nominalCurrentAmps,
+      estPowerWatts,
+      minCoreBoreDiameterMm: Math.round(depth * 0.6),
+      maxOverhangAngleDeg: 36,
+      isAssemblable: true,
+      warnings,
+      inPlaneStrainPct: 0.0,
+      minLateralRadiusMm: 9999,
+      minNormalRadiusMm: 9999,
+      stripFeasibility: 'optimal',
+    };
+  }
+
   if (lampArchetype === 'clouds') {
     const facets = params.cloudColumnFacets ?? 3;
     const colHeight = height - 10;

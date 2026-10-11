@@ -36,24 +36,36 @@
         <!-- Design Archetype Selector -->
         <section class="control-section" style="padding-bottom: 0.75rem;">
           <div class="section-title">Design Archetype</div>
-          <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
-            <button class="archetype-btn active" data-archetype="clouds">☁️ Fluffy Clouds</button>
-            <button class="archetype-btn" data-archetype="veins">🌿 Organic Veined</button>
+          <div class="button-group" style="grid-template-columns: repeat(3, 1fr); gap: 0.3rem;">
+            <button class="archetype-btn active" data-archetype="horizon">🌄 Horizon Bank</button>
+            <button class="archetype-btn" data-archetype="clouds">☁️ Cloud Pillar</button>
+            <button class="archetype-btn" data-archetype="veins">🌿 Organic Vein</button>
           </div>
         </section>
 
-        <!-- Cloud Presets -->
-        <section class="control-section" id="presets-clouds" style="padding-bottom: 0.75rem;">
-          <div class="section-title">Cloud Archetype Presets</div>
+        <!-- Horizon Presets -->
+        <section class="control-section" id="presets-horizon" style="padding-bottom: 0.75rem;">
+          <div class="section-title">Horizon Cloud Presets</div>
           <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
-            <button class="preset-cloud-btn active" data-cloud-preset="cumulus">☁️ Cumulus Dream</button>
+            <button class="preset-horizon-btn active" data-horizon-preset="sunset">🌅 Alpine Sunset</button>
+            <button class="preset-horizon-btn" data-horizon-preset="cumulus">☁️ Cumulus Bank</button>
+            <button class="preset-horizon-btn" data-horizon-preset="thunder">⚡ Thunder Shelf</button>
+            <button class="preset-horizon-btn" data-horizon-preset="twilight">🌸 Twilight Mist</button>
+          </div>
+        </section>
+
+        <!-- Cloud Pillar Presets -->
+        <section class="control-section" id="presets-clouds" style="padding-bottom: 0.75rem; display: none;">
+          <div class="section-title">Cloud Pillar Presets</div>
+          <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
+            <button class="preset-cloud-btn" data-cloud-preset="cumulus">☁️ Cumulus Dream</button>
             <button class="preset-cloud-btn" data-cloud-preset="thunder">⚡ Thunderhead</button>
             <button class="preset-cloud-btn" data-cloud-preset="cirrus">🌫 Cirrus Gentle</button>
             <button class="preset-cloud-btn" data-cloud-preset="aurora">🌌 Aurora Pillar</button>
           </div>
         </section>
 
-        <!-- Vein Presets (hidden in cloud mode) -->
+        <!-- Vein Presets (hidden in cloud modes) -->
         <section class="control-section" id="presets-veins" style="padding-bottom: 0.75rem; display: none;">
           <div class="section-title">Veined Sculptural Presets</div>
           <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.4rem;">
@@ -64,9 +76,26 @@
           </div>
         </section>
 
-        <!-- 1. Lamp Silhouette & Dimensions -->
-        <section class="control-section">
-          <div class="section-title">Silhouette & Form</div>
+        <!-- 1A. Horizon Bank Dimensions (Active for Horizon) -->
+        <section class="control-section" id="section-horizon-dimensions">
+          <div class="section-title">Horizon Cloud Dimensions</div>
+          <div class="control-group">
+            <div class="control-label"><span>Width (X-Axis)</span><span id="param-horizon-width-val" class="control-val">220 mm</span></div>
+            <input type="range" id="param-horizon-width" min="160" max="280" step="5" value="220" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Depth (Y-Axis)</span><span id="param-horizon-depth-val" class="control-val">85 mm</span></div>
+            <input type="range" id="param-horizon-depth" min="60" max="120" step="2" value="85" />
+          </div>
+          <div class="control-group">
+            <div class="control-label"><span>Height (Z-Axis)</span><span id="param-horizon-height-val" class="control-val">105 mm</span></div>
+            <input type="range" id="param-horizon-height" min="70" max="150" step="5" value="105" />
+          </div>
+        </section>
+
+        <!-- 1B. Column Silhouette & Dimensions (Active for Clouds Pillar & Veins) -->
+        <section class="control-section" id="section-silhouette-dimensions" style="display: none;">
+          <div class="section-title">Column Silhouette & Form</div>
           <div class="control-group">
             <div class="control-label"><span>Height</span><span id="param-height-val" class="control-val">180 mm</span></div>
             <input type="range" id="param-height" min="120" max="240" step="5" value="180" />
@@ -120,7 +149,7 @@
             <div class="control-label"><span>Rim Lighting Halo (Edge Glow)</span><span id="param-cloud-rim-val" class="control-val">2.0x</span></div>
             <input type="range" id="param-cloud-rim" min="0.0" max="3.0" step="0.1" value="2.0" />
           </div>
-          <div class="control-group">
+          <div class="control-group" id="group-cloud-column-facets" style="display: none;">
             <div class="control-label"><span>Central LED Tower</span></div>
             <div class="button-group" style="grid-template-columns: repeat(2, 1fr);">
               <button class="facet-btn active" data-facets="3">3 Strips (120°)</button>
@@ -352,7 +381,29 @@
           </div>
           <button id="btn-close-callout" class="callout-close" title="Dismiss Callout">✕</button>
         </div>
-        <div class="callout-specs" id="callout-specs-clouds">
+        <div class="callout-specs" id="callout-specs-horizon">
+          <div class="callout-spec-row">
+            <span class="spec-label">Print Bed Adhesion:</span>
+            <span class="spec-val">Flat on PEI Bed (Z=0, 220×85mm rim)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Lithophane Gradient:</span>
+            <span class="spec-val">0.8mm (canyons & seams) to 6.4mm (crowns)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">LED Mandrel:</span>
+            <span class="spec-val">1× Upward-firing WS2812B ribbon (10.8mm)</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Base Architecture:</span>
+            <span class="spec-val">Desktop Plinth with ESP32-C6 bay & USB-C</span>
+          </div>
+          <div class="callout-spec-row">
+            <span class="spec-label">Support Requirement:</span>
+            <span class="spec-val">100% Support-Free FDM Overhangs (≤ 36°)</span>
+          </div>
+        </div>
+        <div class="callout-specs" id="callout-specs-clouds" style="display: none;">
           <div class="callout-spec-row">
             <span class="spec-label">Material:</span>
             <span class="spec-val">100% Snapmaker SnapSpeed White PLA (#FFFFFF)</span>
