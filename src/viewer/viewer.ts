@@ -68,10 +68,19 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   const studioGroup = new THREE.Group();
   const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
   keyLight.position.set(160, -200, 220);
+  keyLight.target.position.set(0, 0, 85);
+  scene.add(keyLight.target);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.width = 2048;
   keyLight.shadow.mapSize.height = 2048;
-  keyLight.shadow.bias = -0.0001;
+  keyLight.shadow.camera.left = -110;
+  keyLight.shadow.camera.right = 110;
+  keyLight.shadow.camera.top = 130;
+  keyLight.shadow.camera.bottom = -130;
+  keyLight.shadow.camera.near = 40;
+  keyLight.shadow.camera.far = 650;
+  keyLight.shadow.bias = -0.0005;
+  keyLight.shadow.normalBias = 0.08;
   studioGroup.add(keyLight);
 
   const fillLight = new THREE.DirectionalLight(0x90b0e0, 0.7);
@@ -293,6 +302,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
     geo.computeVertexNormals();
+    if (activeParams?.lampArchetype === 'clouds' && part.id === 'body') {
+      return geo; // Preserve 100% smooth continuous vertex normals on organic cloud shade
+    }
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
   }
 
@@ -746,7 +758,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           normalTex.repeat.set(uRepeat, vRepeat);
 
           const microTooth = activeParams?.cloudTurbulence ?? 0.35;
-          const normalStrength = Math.max(0.0, Math.min(1.8, microTooth * 2.2));
+          const normalStrength = Math.max(0.0, Math.min(1.2, microTooth * 1.35));
           mat.normalMap = normalStrength > 0.01 ? normalTex : null;
           mat.normalScale.set(normalStrength, normalStrength);
           if (isCutaway) {
@@ -887,7 +899,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
-      mesh.receiveShadow = true;
+      // The translucent cloud shade casts shadows onto the pedestal desk and base cradle,
+      // but does not self-receive harsh directional shadow acne across its own thin curved shell
+      mesh.receiveShadow = !(params.lampArchetype === 'clouds' && p.id === 'body');
       scene.add(mesh);
       partMeshes.set(p.id, mesh);
     });
