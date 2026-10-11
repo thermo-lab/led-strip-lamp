@@ -365,8 +365,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
 
         // Physical SSS Transmittance: 1.0 at thin glowing intersections/crevices (0.8mm),
-        // gentle warm falloff to 0.52 at thick cloud bodies (4.0 - 6.4mm) - zero dark dirt!
-        transmittances[i] = Math.exp(-0.65 * tNorm);
+        // smooth sculptural falloff to 0.0 at thickest cloud bodies (6.4mm)
+        transmittances[i] = Math.pow(1.0 - tNorm, 1.3);
       }
 
       geo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
@@ -865,9 +865,11 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                   RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
                   {
                     vec3 transHalf = normalize( directLight.direction + ( geometryNormal * 0.25 ) );
-                    float transDot = pow( saturate( dot( geometryViewDir, -transHalf ) ), 2.0 ) * 3.5;
-                    float transDiffuse = saturate( dot( -geometryNormal, directLight.direction ) ) * 0.60;
-                    vec3 transIllu = ( transDot + transDiffuse + 0.35 ) * vTransmittance * directLight.color;
+                    float transDot = pow( saturate( dot( geometryViewDir, -transHalf ) ), 2.0 ) * 4.2;
+                    float transDiffuse = saturate( dot( -geometryNormal, directLight.direction ) ) * 0.80;
+                    // Luminous incandescent hot highlight bloom at thin blob intersections:
+                    vec3 hotBloom = mix(directLight.color, directLight.color * 1.35 + vec3(0.20, 0.16, 0.10), pow(vTransmittance, 2.0));
+                    vec3 transIllu = ( transDot + transDiffuse + 0.25 ) * pow(vTransmittance, 1.2) * hotBloom;
                     reflectedLight.directDiffuse += transIllu * uTranslucencyStrength;
                   }
                   `
@@ -878,7 +880,10 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                 '#include <emissivemap_fragment>',
                 `
                 #include <emissivemap_fragment>
-                totalEmissiveRadiance *= (0.50 + 0.50 * vTransmittance);
+                // Wide 7:1 dynamic range: warm glowing shadows in thick cloud bodies to brilliant incandescent seams
+                float emissiveRange = mix(0.18, 1.0, vTransmittance);
+                vec3 chromaticShift = mix(vec3(0.85, 0.70, 0.55), vec3(1.30, 1.22, 1.08), pow(vTransmittance, 1.6));
+                totalEmissiveRadiance *= emissiveRange * chromaticShift;
                 `
               );
             };

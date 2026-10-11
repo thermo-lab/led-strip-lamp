@@ -265,7 +265,7 @@ export function evalFluffyCloudField(
   const rimWeight = (params.cloudRimLighting ?? 2.0) / 2.0;
 
   const maxDepth = params.cloudPuffDepth ?? 12.0;
-  const moundFactor = Math.min(1.0, Math.max(0.0, compositeBulge / Math.max(4.0, maxDepth * 0.85)));
+  const moundFactor = Math.pow(Math.min(1.0, Math.max(0.0, compositeBulge / Math.max(4.0, maxDepth * 0.75))), 1.4);
 
   // Intersections, crevices & seams between large blobs -> tMin (thin, radiant glowing highlights)
   // Large puff bodies -> tMax (soft volumetric cloud mass)
