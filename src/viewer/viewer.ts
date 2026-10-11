@@ -365,8 +365,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
 
         // Physical Transmittance: 1.0 at thin glowing intersections (0.8mm)
-        // Gentle organic falloff to 0.40 at thick puff bodies (6.4mm)
-        transmittances[i] = 1.0 - 0.60 * tNorm;
+        // Dynamically scaled by thickness range (tMax - tMin) for rich sculptural contrast
+        const depthSpread = Math.min(0.80, 0.45 + (tMax - tMin) * 0.055);
+        transmittances[i] = 1.0 - depthSpread * tNorm;
       }
 
       geo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
@@ -865,9 +866,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                   RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
                   {
                     vec3 transHalf = normalize( directLight.direction + ( geometryNormal * 0.25 ) );
-                    float transDot = pow( saturate( dot( geometryViewDir, -transHalf ) ), 2.0 ) * 3.5;
-                    float transDiffuse = saturate( dot( -geometryNormal, directLight.direction ) ) * 0.65;
-                    vec3 transIllu = ( transDot + transDiffuse + 0.30 ) * vTransmittance * directLight.color;
+                    float transDot = pow( saturate( dot( geometryViewDir, -transHalf ) ), 2.0 ) * 3.8;
+                    float transDiffuse = saturate( dot( -geometryNormal, directLight.direction ) ) * 0.70;
+                    vec3 transIllu = ( transDot + transDiffuse + 0.25 ) * pow(vTransmittance, 1.3) * directLight.color;
                     reflectedLight.directDiffuse += transIllu * uTranslucencyStrength;
                   }
                   `
@@ -878,8 +879,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                 '#include <emissivemap_fragment>',
                 `
                 #include <emissivemap_fragment>
-                // Natural organic cloud luminescence: warm 45% floor to 100% glowing highlights
-                totalEmissiveRadiance *= (0.45 + 0.55 * vTransmittance);
+                // Dynamic lithophane contrast: 30% warm ambient floor up to 100% glowing highlights
+                totalEmissiveRadiance *= (0.30 + 0.70 * vTransmittance);
                 `
               );
             };
