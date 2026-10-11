@@ -9,7 +9,6 @@ import {
   evalStripAngle,
   evalVeinAngle,
 } from '../geometry/organicField';
-import { generateCloudPuffCenters, evalFluffyCloudField, CloudPuff } from '../geometry/cloudGenerator';
 import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
@@ -102,7 +101,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   camera.add(cameraLight);
   scene.add(camera);
 
-  // 3. Glow Lighting Rig (placed physically along the light channels)
+  // 3. Glow Lighting Rig (placed physically along the light channels and for night ambiance)
   const glowGroup = new THREE.Group();
   const deskGlowLight = new THREE.PointLight(0xff9d3b, 1.8, 180, 1.3);
   deskGlowLight.position.set(0, 0, 8);
@@ -114,6 +113,20 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     glowGroup.add(pl);
     veinLights.push(pl);
   }
+
+  // Soft warm night directional & rim lights for authentic 3D shade depth & glowing halo
+  const nightKeyLight = new THREE.DirectionalLight(0xff9d3b, 0.85);
+  nightKeyLight.position.set(80, -100, 120);
+  glowGroup.add(nightKeyLight);
+
+  const nightRimLight = new THREE.DirectionalLight(0xffeedd, 1.15);
+  nightRimLight.position.set(-80, 110, 150);
+  glowGroup.add(nightRimLight);
+
+  const nightFillLight = new THREE.DirectionalLight(0xff9d3b, 0.40);
+  nightFillLight.position.set(-100, -80, 70);
+  glowGroup.add(nightFillLight);
+
   scene.add(glowGroup);
 
   // Circular Desk Pedestal
@@ -298,77 +311,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     cloudFlouretteMaps = { normal: normalTex, cavity: cavityTex };
     return cloudFlouretteMaps;
-  }
-
-  let cachedLithophaneTexture: THREE.CanvasTexture | null = null;
-  let lastLithoKey = '';
-
-  function getCloudLithophaneEmissiveMap(params: LampParameters): THREE.CanvasTexture {
-    const key = `${params.height}_${params.cloudPuffDensity}_${params.cloudPuffDepth}_${params.cloudFloretScale}_${params.cloudMinThickness}_${params.cloudMaxThickness}_${params.cloudRimLighting}_${params.organicSeed}`;
-    if (cachedLithophaneTexture && lastLithoKey === key) {
-      return cachedLithophaneTexture;
-    }
-    lastLithoKey = key;
-
-    const w = 512;
-    const h = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d')!;
-    const imgData = ctx.createImageData(w, h);
-    const data = imgData.data;
-
-    const puffs = generateCloudPuffCenters(
-      params.organicSeed ?? 77,
-      params.height ?? 180,
-      params.cloudPuffDensity ?? 22,
-      params.cloudPuffDepth ?? 12.0,
-      params.cloudFloretScale ?? 2.4
-    );
-    const noise = createNoise3D(params.organicSeed ?? 77);
-
-    const tMin = params.cloudMinThickness ?? 0.95;
-    const tMax = params.cloudMaxThickness ?? 4.8;
-    const rimWeight = (params.cloudRimLighting ?? 2.0) / 2.0;
-
-    for (let y = 0; y < h; y++) {
-      const u = y / (h - 1);
-      for (let x = 0; x < w; x++) {
-        const U = x / (w - 1);
-        const th = (U - 0.5) * 2 * Math.PI;
-
-        const { thickness, maxRimHalo } = evalFluffyCloudField(u, th, params, puffs, noise);
-
-        // Beer-Lambert Lithophane Transmittance
-        // Thick crevices block light (~0.14); thin bodies glow (~0.65); thin rims shine (~1.0)
-        const tNorm = Math.max(0, Math.min(1, (tMax - thickness) / (tMax - tMin)));
-        const baseTransmission = Math.pow(tNorm, 1.35) * 0.58 + 0.14;
-
-        // Glowing Rim Lighting Halo ("Silver Lining" along steep perimeter boundaries)
-        const rimHalo = maxRimHalo * 0.48 * rimWeight;
-
-        const totalTransmittance = Math.min(1.0, baseTransmission + rimHalo);
-
-        // Color grade the transmittance for authentic warm lithophane radiance:
-        const r = Math.floor(Math.min(1.0, totalTransmittance * 1.05) * 255);
-        const g = Math.floor(Math.pow(totalTransmittance, 1.25) * 0.93 * 255);
-        const b = Math.floor(Math.pow(totalTransmittance, 1.95) * 0.68 * 255);
-
-        const idx = (y * w + x) * 4;
-        data[idx] = r;
-        data[idx + 1] = g;
-        data[idx + 2] = b;
-        data[idx + 3] = 255;
-      }
-    }
-
-    ctx.putImageData(imgData, 0, 0);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.ClampToEdgeWrapping;
-    cachedLithophaneTexture = tex;
-    return tex;
   }
 
   function partToThreeGeometry(part: LampPart): THREE.BufferGeometry {
@@ -874,10 +816,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
             mat.opacity = 1.0;
             mat.depthWrite = true;
             if (isNight) {
-              const lithoTex = getCloudLithophaneEmissiveMap(activeParams ?? ({} as any));
               mat.emissive = lColor;
-              mat.emissiveMap = lithoTex;
-              mat.emissiveIntensity = intensity * 1.35;
+              mat.emissiveMap = null;
+              mat.emissiveIntensity = intensity * 0.45;
             } else {
               mat.emissive = new THREE.Color(0x000000);
               mat.emissiveMap = null;
@@ -1021,6 +962,17 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         vl.intensity = params.lightIntensity * 2.2;
         vl.position.set(0, 0, zLight);
       });
+      nightKeyLight.color = lColor;
+      nightKeyLight.intensity = params.lightIntensity * 0.85;
+      nightKeyLight.position.set(80, -100, params.height * 0.65);
+
+      nightRimLight.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.25);
+      nightRimLight.intensity = params.lightIntensity * 1.15;
+      nightRimLight.position.set(-80, 110, params.height * 0.80);
+
+      nightFillLight.color = lColor;
+      nightFillLight.intensity = params.lightIntensity * 0.40;
+      nightFillLight.position.set(-100, -80, params.height * 0.35);
     } else {
       const rMid = (params.baseRadius + params.topRadius) * 0.45;
       veinLights.forEach((vl, idx) => {
@@ -1112,6 +1064,15 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     deskGlowLight.color = color;
     deskGlowLight.intensity = intensity * 1.6;
 
+    nightKeyLight.color = color;
+    nightKeyLight.intensity = intensity * 0.85;
+
+    nightRimLight.color = color.clone().lerp(new THREE.Color('#ffffff'), 0.25);
+    nightRimLight.intensity = intensity * 1.15;
+
+    nightFillLight.color = color;
+    nightFillLight.intensity = intensity * 0.40;
+
     // Dynamically update cloud shade body glow and intensity in real time
     const bodyMesh = partMeshes.get('body');
     if (bodyMesh) {
@@ -1119,7 +1080,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       if (activeParams?.lampArchetype === 'clouds') {
         if (currentMode === 'night') {
           mat.emissive = color;
-          mat.emissiveIntensity = intensity * 1.35;
+          mat.emissiveIntensity = intensity * 0.45;
         } else if (currentMode === 'cutaway') {
           mat.emissive = color;
           mat.emissiveIntensity = intensity * 0.45;
