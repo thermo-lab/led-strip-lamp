@@ -245,12 +245,19 @@ export function evalFluffyCloudField(
   // Level 2 Intermediate Broccoli Floret Harmonics (~7-10mm wavelength)
   const floretScale = params.cloudFloretScale ?? 2.4;
   const floretWave = floretScale > 0.1 ? (
-    noise(xMm * 0.10 + 42.1, yMm * 0.10 + 88.3, zMm * 0.10 + 17.5) * (floretScale * 0.45) +
-    noise(xMm * 0.16 + 14.7, yMm * 0.16 + 33.2, zMm * 0.16 + 91.1) * (floretScale * 0.20)
+    noise(xMm * 0.10 + 42.1, yMm * 0.10 + 88.3, zMm * 0.10 + 17.5) * (floretScale * 0.55) +
+    noise(xMm * 0.16 + 14.7, yMm * 0.16 + 33.2, zMm * 0.16 + 91.1) * (floretScale * 0.28)
   ) : 0;
 
-  // Outer radius: composite billows + fluid flow waves + intermediate florets
-  const rOuter = rNom + (compositeBulge + fluidWave + floretWave) * rimEase;
+  // Level 3 Physical Micro-Granule Floret Tooth (~3.5-5.5mm wavelength)
+  const microTooth = params.cloudTurbulence ?? 0.35;
+  const microWave = microTooth > 0.05 ? (
+    noise(xMm * 0.26 + 61.3, yMm * 0.26 + 19.8, zMm * 0.26 + 84.2) * (microTooth * 0.95) +
+    noise(xMm * 0.40 + 12.7, yMm * 0.40 + 93.1, zMm * 0.40 + 47.6) * (microTooth * 0.55)
+  ) : 0;
+
+  // Outer radius: composite billows + fluid flow waves + intermediate florets + micro-floret tooth
+  const rOuter = rNom + (compositeBulge + fluidWave + floretWave + microWave) * rimEase;
 
   // LITHOPHANE THICKNESS WITH PRONOUNCED ORGANIC RIM LIGHTING:
   // 1. Far crevices between clumps: thick wall (~4.5mm) -> deep velvety shadow

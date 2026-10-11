@@ -66,7 +66,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   // Lighting rigs
   // 1. Studio Lights
   const studioGroup = new THREE.Group();
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
   keyLight.position.set(160, -200, 220);
   keyLight.target.position.set(0, 0, 85);
   scene.add(keyLight.target);
@@ -83,15 +83,15 @@ export function createLampViewer(container: HTMLElement): LampViewer {
   keyLight.shadow.normalBias = 0.08;
   studioGroup.add(keyLight);
 
-  const fillLight = new THREE.DirectionalLight(0x90b0e0, 0.7);
+  const fillLight = new THREE.DirectionalLight(0x90b0e0, 0.45);
   fillLight.position.set(-160, 120, 150);
   studioGroup.add(fillLight);
 
-  const rimLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+  const rimLight = new THREE.DirectionalLight(0xffeedd, 0.75);
   rimLight.position.set(0, 180, 160);
   studioGroup.add(rimLight);
 
-  const ambientLight = new THREE.AmbientLight(0x223045, 0.7);
+  const ambientLight = new THREE.AmbientLight(0x223045, 0.45);
   studioGroup.add(ambientLight);
   scene.add(studioGroup);
 
@@ -162,9 +162,9 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     };
   }
 
-  let cloudFlouretteNormalMap: THREE.CanvasTexture | null = null;
-  function getCloudFlouretteNormalMap(): THREE.CanvasTexture {
-    if (cloudFlouretteNormalMap) return cloudFlouretteNormalMap;
+  let cloudFlouretteMaps: { normal: THREE.CanvasTexture; cavity: THREE.CanvasTexture } | null = null;
+  function getCloudFlouretteTextures(): { normal: THREE.CanvasTexture; cavity: THREE.CanvasTexture } {
+    if (cloudFlouretteMaps) return cloudFlouretteMaps;
     const size = 512;
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -268,11 +268,35 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     }
 
     ctx.putImageData(imgData, 0, 0);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    cloudFlouretteNormalMap = texture;
-    return texture;
+    const normalTex = new THREE.CanvasTexture(canvas);
+    normalTex.wrapS = THREE.RepeatWrapping;
+    normalTex.wrapT = THREE.RepeatWrapping;
+
+    // Generate matching micro-cavity occlusion map to shade crevices between beads
+    const cavCanvas = document.createElement('canvas');
+    cavCanvas.width = size;
+    cavCanvas.height = size;
+    const cavCtx = cavCanvas.getContext('2d')!;
+    const cavImgData = cavCtx.createImageData(size, size);
+    const cavData = cavImgData.data;
+
+    for (let i = 0; i < size * size; i++) {
+      const h = heightMap[i];
+      // Bead crowns stay pure 255 white PLA; crevices between beads dip to 200 for tactile contrast
+      const val = Math.floor((0.78 + 0.22 * h) * 255);
+      const idx = i * 4;
+      cavData[idx] = val;
+      cavData[idx + 1] = val;
+      cavData[idx + 2] = val;
+      cavData[idx + 3] = 255;
+    }
+    cavCtx.putImageData(cavImgData, 0, 0);
+    const cavityTex = new THREE.CanvasTexture(cavCanvas);
+    cavityTex.wrapS = THREE.RepeatWrapping;
+    cavityTex.wrapT = THREE.RepeatWrapping;
+
+    cloudFlouretteMaps = { normal: normalTex, cavity: cavityTex };
+    return cloudFlouretteMaps;
   }
 
   function partToThreeGeometry(part: LampPart): THREE.BufferGeometry {
@@ -730,7 +754,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     studioGroup.visible = !isNight || isCutaway;
     glowGroup.visible = isNight || isCutaway;
     electronicsGroup.visible = isCutaway;
-    cameraLight.intensity = isCutaway ? 2.4 : 0.9;
+    cameraLight.intensity = isCutaway ? 2.4 : 0.20;
 
     renderer.clippingPlanes = isCutaway ? [clipPlane] : [];
 
@@ -742,11 +766,12 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       mat.clippingPlanes = isCutaway ? [clipPlane] : [];
       mat.clipShadows = true;
       mat.normalMap = null;
+      mat.map = null;
 
       if (activeParams?.lampArchetype === 'clouds') {
         if (id === 'body') {
-          // Cloud shade with broccoli flourette micro-texture
-          const normalTex = getCloudFlouretteNormalMap();
+          // Cloud shade with broccoli flourette micro-texture & cavity occlusion
+          const { normal: normalTex, cavity: cavityTex } = getCloudFlouretteTextures();
           const h = activeParams?.height ?? 180.0;
           const rMean = (((activeParams?.baseRadius ?? 44) + (activeParams?.topRadius ?? 38)) / 2) + 5.0;
           const circ = 2 * Math.PI * rMean;
@@ -756,11 +781,13 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           const vRepeat = h / tileSizeMm;
           const uRepeat = circ / tileSizeMm;
           normalTex.repeat.set(uRepeat, vRepeat);
+          cavityTex.repeat.set(uRepeat, vRepeat);
 
           const microTooth = activeParams?.cloudTurbulence ?? 0.35;
-          const normalStrength = Math.max(0.0, Math.min(1.2, microTooth * 1.35));
+          const normalStrength = Math.max(0.0, Math.min(1.4, microTooth * 1.45));
           mat.normalMap = normalStrength > 0.01 ? normalTex : null;
           mat.normalScale.set(normalStrength, normalStrength);
+          mat.map = normalStrength > 0.01 ? cavityTex : null;
           if (isCutaway) {
             mesh.visible = currentDiffuserMode !== 'hidden';
             mat.transparent = currentDiffuserMode === 'ghost';
