@@ -9,6 +9,7 @@ import {
   evalStripAngle,
   evalVeinAngle,
 } from '../geometry/organicField';
+import { generateCloudPuffCenters, evalFluffyCloudField } from '../geometry/cloudGenerator';
 import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
@@ -341,6 +342,33 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
     geo.computeVertexNormals();
     if (activeParams?.lampArchetype === 'clouds' && part.id === 'body') {
+      const transmittances = new Float32Array(count);
+      const puffs = generateCloudPuffCenters(
+        activeParams.organicSeed ?? 77,
+        h,
+        activeParams.cloudPuffDensity ?? 22,
+        activeParams.cloudPuffDepth ?? 12.0,
+        activeParams.cloudFloretScale ?? 2.4
+      );
+      const noise = createNoise3D(activeParams.organicSeed ?? 77);
+      const tMin = activeParams.cloudMinThickness ?? 0.8;
+      const tMax = activeParams.cloudMaxThickness ?? 6.4;
+
+      for (let i = 0; i < count; i++) {
+        const x = positions[i * 3];
+        const y = positions[i * 3 + 1];
+        const z = positions[i * 3 + 2];
+        const u = Math.max(0, Math.min(1, z / h));
+        const th = Math.atan2(y, x);
+
+        const { thickness } = evalFluffyCloudField(u, th, activeParams, puffs, noise);
+        const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
+
+        // Physical SSS Transmittance: 1.0 at min wall (0.8mm highlight), down to 0.18 at max wall (6.4mm shadow)
+        transmittances[i] = Math.exp(-1.75 * tNorm);
+      }
+
+      geo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
       return geo; // Preserve 100% smooth continuous vertex normals on organic cloud shade
     }
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
@@ -805,12 +833,28 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
           if (!(mat as any).userData.hasTranslucencyShader) {
             (mat as any).userData.hasTranslucencyShader = true;
-            mat.customProgramCacheKey = () => 'cloud_translucency_sss_v3';
+            mat.customProgramCacheKey = () => 'cloud_translucency_sss_v4';
             mat.onBeforeCompile = (shader) => {
               shader.uniforms.uTranslucencyStrength = { value: isNight ? 1.0 : 0.0 };
               (mat as any).userData.shader = shader;
 
-              shader.fragmentShader = `uniform float uTranslucencyStrength;\n` + shader.fragmentShader;
+              // 1. Vertex Shader: declare attribute and pass varying
+              shader.vertexShader = `
+              attribute float transmittance;
+              varying float vTransmittance;
+              ` + shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                vTransmittance = transmittance;
+                `
+              );
+
+              // 2. Fragment Shader: receive varying and modulate forward SSS translucency
+              shader.fragmentShader = `
+              uniform float uTranslucencyStrength;
+              varying float vTransmittance;
+              ` + shader.fragmentShader;
 
               shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <lights_fragment_begin>',
@@ -820,13 +864,21 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                   RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
                   {
                     vec3 transHalf = normalize( directLight.direction + ( geometryNormal * 0.25 ) );
-                    float transDot = pow( saturate( dot( geometryViewDir, -transHalf ) ), 2.2 ) * 3.2;
+                    float transDot = pow( saturate( dot( geometryViewDir, -transHalf ) ), 2.0 ) * 3.2;
                     float transDiffuse = saturate( dot( -geometryNormal, directLight.direction ) ) * 0.50;
-                    vec3 transIllu = ( transDot + transDiffuse + 0.38 ) * directLight.color;
+                    vec3 transIllu = ( transDot + transDiffuse + 0.25 ) * vTransmittance * directLight.color;
                     reflectedLight.directDiffuse += transIllu * uTranslucencyStrength;
                   }
                   `
                 )
+              );
+
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <emissivemap_fragment>',
+                `
+                #include <emissivemap_fragment>
+                totalEmissiveRadiance *= (0.28 + 0.72 * vTransmittance);
+                `
               );
             };
           }
