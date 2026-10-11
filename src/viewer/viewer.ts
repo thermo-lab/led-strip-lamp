@@ -9,7 +9,6 @@ import {
   evalStripAngle,
   evalVeinAngle,
 } from '../geometry/organicField';
-import { generateCloudPuffCenters, evalFluffyCloudField } from '../geometry/cloudGenerator';
 import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
@@ -342,54 +341,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
     geo.computeVertexNormals();
     if (activeParams?.lampArchetype === 'clouds' && part.id === 'body') {
-      const colors = new Float32Array(count * 3);
-      const puffs = generateCloudPuffCenters(
-        activeParams.organicSeed ?? 77,
-        h,
-        activeParams.cloudPuffDensity ?? 22,
-        activeParams.cloudPuffDepth ?? 12.0,
-        activeParams.cloudFloretScale ?? 2.4
-      );
-      const noise = createNoise3D(activeParams.organicSeed ?? 77);
-      const rimWeight = (activeParams.cloudRimLighting ?? 2.0) / 2.0;
-
-      for (let i = 0; i < count; i++) {
-        const x = positions[i * 3];
-        const y = positions[i * 3 + 1];
-        const z = positions[i * 3 + 2];
-        const r = Math.hypot(x, y);
-        const u = Math.max(0, Math.min(1, z / h));
-        const th = Math.atan2(y, x);
-
-        const { rInner, thickness, maxRimHalo } = evalFluffyCloudField(u, th, activeParams, puffs, noise);
-
-        if (r < rInner + 0.4) {
-          // Inside wall facing directly toward the central LED column
-          colors[i * 3] = 1.0;
-          colors[i * 3 + 1] = 0.95;
-          colors[i * 3 + 2] = 0.88;
-        } else {
-          // Outside wall: forward-scattered Beer-Lambert transmission through white PLA thickness
-          const tMin = activeParams.cloudMinThickness ?? 0.95;
-          const tMax = activeParams.cloudMaxThickness ?? 4.8;
-          const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / (tMax - tMin)));
-
-          // Physical SSS Transmittance with forward-scattering Mie peak:
-          // Thin crests (tNorm=0) transmit 100% luminous warm light; thick crevices (tNorm=1) occlude down to 18%
-          const trans = Math.pow(1.0 - tNorm, 1.35) * 0.82 + 0.18;
-          const halo = maxRimHalo * 0.38 * rimWeight;
-
-          const sssR = Math.min(1.45, (trans + halo) * 1.15);
-          const sssG = Math.min(1.25, (Math.pow(trans, 1.25) + halo * 0.85) * 1.05);
-          const sssB = Math.min(1.05, (Math.pow(trans, 1.85) + halo * 0.55) * 0.85);
-
-          colors[i * 3] = sssR;
-          colors[i * 3 + 1] = sssG;
-          colors[i * 3 + 2] = sssB;
-        }
-      }
-
-      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       return geo; // Preserve 100% smooth continuous vertex normals on organic cloud shade
     }
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
@@ -850,42 +801,38 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           const normalStrength = Math.max(0.0, Math.min(1.4, microTooth * 1.45));
           mat.normalMap = normalStrength > 0.01 ? normalTex : null;
           mat.normalScale.set(normalStrength, normalStrength);
-          mat.map = normalStrength > 0.01 ? cavityTex : null;
-          mat.vertexColors = true;
+          mat.vertexColors = false;
 
-          if (!(mat as any).userData.hasSssShader) {
-            (mat as any).userData.hasSssShader = true;
-            mat.customProgramCacheKey = () => 'cloud_litho_sss_v1';
+          if (!(mat as any).userData.hasTranslucencyShader) {
+            (mat as any).userData.hasTranslucencyShader = true;
+            mat.customProgramCacheKey = () => 'cloud_translucency_sss_v3';
             mat.onBeforeCompile = (shader) => {
-              shader.uniforms.uIsNight = { value: isNight ? 1.0 : 0.0 };
+              shader.uniforms.uTranslucencyStrength = { value: isNight ? 1.0 : 0.0 };
               (mat as any).userData.shader = shader;
 
-              shader.fragmentShader = `uniform float uIsNight;\n` + shader.fragmentShader;
+              shader.fragmentShader = `uniform float uTranslucencyStrength;\n` + shader.fragmentShader;
 
               shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <color_fragment>',
-                `
-                #if defined( USE_COLOR_ALPHA )
-                  diffuseColor *= vColor;
-                #elif defined( USE_COLOR )
-                  diffuseColor.rgb *= mix(vec3(1.0), vColor.rgb, uIsNight * 0.35);
-                #endif
-                `
-              );
-
-              shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <emissivemap_fragment>',
-                `
-                #include <emissivemap_fragment>
-                // Physical Lithophane SSS: internal emissive radiance attenuated by wall thickness
-                totalEmissiveRadiance *= vColor.rgb;
-                `
+                '#include <lights_fragment_begin>',
+                THREE.ShaderChunk.lights_fragment_begin.replace(
+                  'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );',
+                  `
+                  RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
+                  {
+                    vec3 transHalf = normalize( directLight.direction + ( geometryNormal * 0.25 ) );
+                    float transDot = pow( saturate( dot( geometryViewDir, -transHalf ) ), 2.2 ) * 3.2;
+                    float transDiffuse = saturate( dot( -geometryNormal, directLight.direction ) ) * 0.50;
+                    vec3 transIllu = ( transDot + transDiffuse + 0.38 ) * directLight.color;
+                    reflectedLight.directDiffuse += transIllu * uTranslucencyStrength;
+                  }
+                  `
+                )
               );
             };
           }
 
           if ((mat as any).userData.shader) {
-            (mat as any).userData.shader.uniforms.uIsNight.value = isNight ? 1.0 : 0.0;
+            (mat as any).userData.shader.uniforms.uTranslucencyStrength.value = isNight ? 1.0 : 0.0;
           }
 
           if (isCutaway) {
@@ -904,7 +851,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
             if (isNight) {
               mat.emissive = lColor;
               mat.emissiveMap = null;
-              mat.emissiveIntensity = intensity * 1.55;
+              mat.emissiveIntensity = intensity * 0.45;
             } else {
               mat.emissive = new THREE.Color(0x000000);
               mat.emissiveMap = null;
@@ -991,7 +938,6 @@ export function createLampViewer(container: HTMLElement): LampViewer {
             roughness: 0.70,
             metalness: 0.0,
             side: THREE.DoubleSide,
-            vertexColors: true,
           });
         } else if (p.id === 'veins') {
           mat = new THREE.MeshStandardMaterial({
@@ -1046,19 +992,19 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       veinLights.forEach((vl, idx) => {
         const zLight = (idx / veinLights.length) * (params.height - 24) + 18;
         vl.color = lColor;
-        vl.intensity = params.lightIntensity * 2.2;
+        vl.intensity = params.lightIntensity * 3.2; // Drives the physical forward SSS translucency
         vl.position.set(0, 0, zLight);
       });
       nightKeyLight.color = lColor;
-      nightKeyLight.intensity = params.lightIntensity * 0.22;
+      nightKeyLight.intensity = params.lightIntensity * 0.15;
       nightKeyLight.position.set(80, -100, params.height * 0.65);
 
       nightRimLight.color = lColor.clone().lerp(new THREE.Color('#ffffff'), 0.35);
-      nightRimLight.intensity = params.lightIntensity * 0.45;
+      nightRimLight.intensity = params.lightIntensity * 0.35;
       nightRimLight.position.set(-80, 110, params.height * 0.80);
 
       nightFillLight.color = lColor;
-      nightFillLight.intensity = params.lightIntensity * 0.15;
+      nightFillLight.intensity = params.lightIntensity * 0.10;
       nightFillLight.position.set(-100, -80, params.height * 0.35);
     } else {
       const rMid = (params.baseRadius + params.topRadius) * 0.45;
@@ -1146,19 +1092,19 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
     veinLights.forEach((vl) => {
       vl.color = color;
-      vl.intensity = intensity * 1.6;
+      vl.intensity = intensity * 3.2; // Drives the physical forward SSS translucency
     });
     deskGlowLight.color = color;
     deskGlowLight.intensity = intensity * 1.6;
 
     nightKeyLight.color = color;
-    nightKeyLight.intensity = intensity * 0.22;
+    nightKeyLight.intensity = intensity * 0.15;
 
     nightRimLight.color = color.clone().lerp(new THREE.Color('#ffffff'), 0.35);
-    nightRimLight.intensity = intensity * 0.45;
+    nightRimLight.intensity = intensity * 0.35;
 
     nightFillLight.color = color;
-    nightFillLight.intensity = intensity * 0.15;
+    nightFillLight.intensity = intensity * 0.10;
 
     // Dynamically update cloud shade body glow and intensity in real time
     const bodyMesh = partMeshes.get('body');
@@ -1167,7 +1113,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       if (activeParams?.lampArchetype === 'clouds') {
         if (currentMode === 'night') {
           mat.emissive = color;
-          mat.emissiveIntensity = intensity * 1.55;
+          mat.emissiveIntensity = intensity * 0.40;
         } else if (currentMode === 'cutaway') {
           mat.emissive = color;
           mat.emissiveIntensity = intensity * 0.45;

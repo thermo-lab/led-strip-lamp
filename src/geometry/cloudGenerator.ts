@@ -259,24 +259,13 @@ export function evalFluffyCloudField(
   // Outer radius: composite billows + fluid flow waves + intermediate florets + micro-floret tooth
   const rOuter = rNom + (compositeBulge + fluidWave + floretWave + microWave) * rimEase;
 
-  // LITHOPHANE THICKNESS WITH PRONOUNCED ORGANIC RIM LIGHTING:
-  // 1. Far crevices between clumps: thick wall (~4.8mm) -> deep warm candlelight shadow
-  // 2. Clump body interior: moderate thickness (~2.5mm) -> warm, diffuse internal glow
-  // 3. Clump peaks & silhouette edges: thin wall (~0.95mm) -> BRILLIANT GLOWING RIM HALO & HIGHLIGHT!
-  const maxBulgeRef = (params.cloudPuffDepth ?? 12.0) * 1.15;
-  const puffNorm = Math.min(1.0, Math.max(0.0, compositeBulge / Math.max(6.0, maxBulgeRef)));
-  let thickness = cloudMinThickness + (1.0 - puffNorm) * (cloudMaxThickness - cloudMinThickness);
-
-  // Clump edge rim thinning: aggressively carves out the glowing rim halo along perimeter slopes
-  const rimThinning = (cloudRimLighting ?? 2.0) * maxRimHalo * 1.6;
-  thickness -= rimThinning;
-
-  // Clamp strictly within printable bounds (0.95mm min for FDM wall integrity)
-  thickness = Math.max(cloudMinThickness, Math.min(cloudMaxThickness, thickness));
+  // Support-free printable wall thickness (1.5mm - 2.4mm for optimal white PLA translucency & strength)
+  const normBulge = Math.min(1.0, Math.max(0.0, compositeBulge / 12.0));
+  let thickness = 1.5 + normBulge * 0.7;
 
   // Bottom collar is solid for seating in base cradle
   if (u < 0.05) {
-    thickness = 3.2;
+    thickness = 2.8;
   }
 
   const rInner = rOuter - thickness;
