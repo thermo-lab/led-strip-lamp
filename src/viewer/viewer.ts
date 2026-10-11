@@ -370,13 +370,22 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           colors[i * 3 + 2] = 0.88;
         } else {
           // Outside wall: forward-scattered Beer-Lambert transmission through white PLA thickness
-          const sssR = Math.exp(-0.24 * thickness) + maxRimHalo * 0.32 * rimWeight;
-          const sssG = Math.exp(-0.35 * thickness) + maxRimHalo * 0.28 * rimWeight;
-          const sssB = Math.exp(-0.55 * thickness) + maxRimHalo * 0.22 * rimWeight;
+          const tMin = activeParams.cloudMinThickness ?? 0.95;
+          const tMax = activeParams.cloudMaxThickness ?? 4.8;
+          const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / (tMax - tMin)));
 
-          colors[i * 3] = Math.min(1.30, sssR * 1.15);
-          colors[i * 3 + 1] = Math.min(1.20, sssG * 1.12);
-          colors[i * 3 + 2] = Math.min(1.10, sssB * 1.05);
+          // Physical SSS Transmittance with forward-scattering Mie peak:
+          // Thin crests (tNorm=0) transmit 100% luminous warm light; thick crevices (tNorm=1) occlude down to 18%
+          const trans = Math.pow(1.0 - tNorm, 1.35) * 0.82 + 0.18;
+          const halo = maxRimHalo * 0.38 * rimWeight;
+
+          const sssR = Math.min(1.45, (trans + halo) * 1.15);
+          const sssG = Math.min(1.25, (Math.pow(trans, 1.25) + halo * 0.85) * 1.05);
+          const sssB = Math.min(1.05, (Math.pow(trans, 1.85) + halo * 0.55) * 0.85);
+
+          colors[i * 3] = sssR;
+          colors[i * 3 + 1] = sssG;
+          colors[i * 3 + 2] = sssB;
         }
       }
 
@@ -868,10 +877,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
                 '#include <emissivemap_fragment>',
                 `
                 #include <emissivemap_fragment>
-                #ifdef USE_COLOR
-                  // Physical Lithophane SSS: internal emissive radiance attenuated by wall thickness
-                  totalEmissiveRadiance *= vColor.rgb;
-                #endif
+                // Physical Lithophane SSS: internal emissive radiance attenuated by wall thickness
+                totalEmissiveRadiance *= vColor.rgb;
                 `
               );
             };
@@ -984,6 +991,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
             roughness: 0.70,
             metalness: 0.0,
             side: THREE.DoubleSide,
+            vertexColors: true,
           });
         } else if (p.id === 'veins') {
           mat = new THREE.MeshStandardMaterial({

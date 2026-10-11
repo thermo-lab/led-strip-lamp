@@ -260,14 +260,15 @@ export function evalFluffyCloudField(
   const rOuter = rNom + (compositeBulge + fluidWave + floretWave + microWave) * rimEase;
 
   // LITHOPHANE THICKNESS WITH PRONOUNCED ORGANIC RIM LIGHTING:
-  // 1. Far crevices between clumps: thick wall (~4.5mm) -> deep velvety shadow
-  // 2. Clump body interior: moderate thickness (~3.6mm) -> warm, diffuse internal glow
-  // 3. Clump SILHOUETTE EDGES / RIMS: ultra-thin wall (~0.95mm - 1.05mm) -> BRILLIANT GLOWING RIM HALO!
-  const puffNorm = Math.min(1.0, Math.max(0.0, compositeBulge / 14.0));
-  let thickness = cloudMaxThickness - puffNorm * 0.9;
+  // 1. Far crevices between clumps: thick wall (~4.8mm) -> deep warm candlelight shadow
+  // 2. Clump body interior: moderate thickness (~2.5mm) -> warm, diffuse internal glow
+  // 3. Clump peaks & silhouette edges: thin wall (~0.95mm) -> BRILLIANT GLOWING RIM HALO & HIGHLIGHT!
+  const maxBulgeRef = (params.cloudPuffDepth ?? 12.0) * 1.15;
+  const puffNorm = Math.min(1.0, Math.max(0.0, compositeBulge / Math.max(6.0, maxBulgeRef)));
+  let thickness = cloudMinThickness + (1.0 - puffNorm) * (cloudMaxThickness - cloudMinThickness);
 
   // Clump edge rim thinning: aggressively carves out the glowing rim halo along perimeter slopes
-  const rimThinning = (cloudRimLighting ?? 2.0) * maxRimHalo * 2.85;
+  const rimThinning = (cloudRimLighting ?? 2.0) * maxRimHalo * 1.6;
   thickness -= rimThinning;
 
   // Clamp strictly within printable bounds (0.95mm min for FDM wall integrity)
