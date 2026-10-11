@@ -267,12 +267,18 @@ export function evalFluffyCloudField(
   const maxDepth = params.cloudPuffDepth ?? 12.0;
   const moundFactor = Math.min(1.0, Math.max(0.0, compositeBulge / Math.max(4.0, maxDepth * 0.85)));
 
-  // Mound peaks -> tMin (thin glow highlight); Crevices -> tMax (thick shadow depth)
-  let localT = tMax - moundFactor * (tMax - tMin);
+  // Intersections, crevices & seams between large blobs -> tMin (thin, radiant glowing highlights)
+  // Large puff bodies -> tMax (soft volumetric cloud mass)
+  let localT = tMin + moundFactor * (tMax - tMin);
 
-  // Clump perimeter boundary -> carved thin for radiant rim lighting halo
-  const haloThinning = maxRimHalo * (tMax - tMin) * 0.45 * rimWeight;
+  // Clump perimeter boundary (silver lining halo) -> carved thin for radiant edge glow
+  const haloThinning = maxRimHalo * (tMax - tMin) * 0.50 * rimWeight;
   localT -= haloThinning;
+
+  // Intersections where multiple large blobs overlap: carve out extra lightness
+  const blobOverlap = Math.min(1.0, Math.max(0.0, (sumBulge - maxBulge) / 4.0));
+  localT -= blobOverlap * (tMax - tMin) * 0.40 * rimWeight;
+
   localT = Math.max(tMin, Math.min(tMax, localT));
 
   // Smooth collar blend at base and top rim (nominal 2.0mm thickness, never burnt or dark)
