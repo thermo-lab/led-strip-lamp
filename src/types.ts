@@ -30,6 +30,7 @@ export interface LampParameters {
   fluteDepth: number;         // Depth of fluted ridges (mm), 0 to 4.0
 
   // Cloud Morphology (when lampArchetype === 'clouds' or 'horizon')
+  cloudStyle?: 'smooth' | 'rough'; // 'smooth' (pillowy cartoon/anime cumulus) or 'rough' (sculpted cauliflower convective billows)
   cloudPuffDensity?: number;    // Number of puff clusters (20 to 50)
   cloudPuffDepth?: number;      // Macro puff bulge amplitude in mm (4.0 to 16.0 mm)
   cloudFloretScale?: number;    // Intermediate floret cluster scale in mm (0.0 to 6.0 mm, diameter ~7-10mm)

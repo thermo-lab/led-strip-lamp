@@ -357,7 +357,8 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           d,
           hH,
           activeParams.cloudPuffDepth ?? 14.0,
-          activeParams.cloudFloretScale ?? 2.6
+          activeParams.cloudFloretScale ?? 2.6,
+          activeParams.cloudStyle ?? 'smooth'
         );
 
         for (let i = 0; i < count; i++) {
@@ -394,7 +395,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       }
 
       geo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
-      return toCreasedNormals(geo, (50 * Math.PI) / 180);
+      return geo; // Preserve 100% smooth continuous indexed vertex normals on organic cloud shade
     }
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
   }

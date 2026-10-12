@@ -6,6 +6,7 @@ import { exportSTL } from './export/stlExport';
 
 const defaultParams: LampParameters = {
   lampArchetype: 'horizon', // Default to the new Panoramic Horizon Cloud Bank
+  cloudStyle: 'smooth',     // Default to smooth pillowy anime/cartoon cumulus look
   horizonWidth: 220,
   horizonDepth: 85,
   horizonHeight: 105,

@@ -121,6 +121,13 @@
         <!-- 2. Cumulus Cloud Formation (Active for Clouds) -->
         <section class="control-section" id="section-cloud-controls">
           <div class="section-title">Cumulus Cloud Formation</div>
+          <div class="control-group" id="group-cloud-style">
+            <div class="control-label"><span>Cloud Surface Style</span></div>
+            <div class="button-group" style="grid-template-columns: repeat(2, 1fr); gap: 0.35rem;">
+              <button class="cloud-style-btn active" data-cloud-style="smooth">☁️ Smooth Anime</button>
+              <button class="cloud-style-btn" data-cloud-style="rough">🥦 Sculpted Cauliflower</button>
+            </div>
+          </div>
           <div class="control-group">
             <div class="control-label"><span>Puff Cluster Density</span><span id="param-cloud-density-val" class="control-val">22 puffs</span></div>
             <input type="range" id="param-cloud-density" min="16" max="44" step="2" value="22" />

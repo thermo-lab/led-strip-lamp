@@ -184,6 +184,7 @@ export function setupUI(
       btn.classList.add('active');
       const p = btn.dataset.horizonPreset;
       if (p === 'sunset') {
+        current.cloudStyle = 'smooth';
         current.horizonWidth = 240;
         current.horizonDepth = 85;
         current.horizonHeight = 105;
@@ -197,6 +198,7 @@ export function setupUI(
         current.lightColor = '#ff793f';
         current.lightIntensity = 1.4;
       } else if (p === 'cumulus') {
+        current.cloudStyle = 'rough';
         current.horizonWidth = 220;
         current.horizonDepth = 85;
         current.horizonHeight = 105;
@@ -210,6 +212,7 @@ export function setupUI(
         current.lightColor = '#ff9d3b';
         current.lightIntensity = 1.2;
       } else if (p === 'thunder') {
+        current.cloudStyle = 'rough';
         current.horizonWidth = 250;
         current.horizonDepth = 90;
         current.horizonHeight = 115;
@@ -223,6 +226,7 @@ export function setupUI(
         current.lightColor = '#48dbfb';
         current.lightIntensity = 1.5;
       } else if (p === 'twilight') {
+        current.cloudStyle = 'smooth';
         current.horizonWidth = 200;
         current.horizonDepth = 80;
         current.horizonHeight = 95;
@@ -315,6 +319,17 @@ export function setupUI(
   bindSlider('param-surface-noise', 'surfaceNoise', (v) => `${v.toFixed(1)} mm`);
   bindSlider('param-organic-seed', 'organicSeed', (v) => String(Math.round(v)));
 
+  // Cloud Surface Style Selectors (Smooth Anime vs Sculpted Cauliflower)
+  const cloudStyleButtons = document.querySelectorAll<HTMLButtonElement>('.cloud-style-btn');
+  cloudStyleButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      cloudStyleButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      current.cloudStyle = (btn.dataset.cloudStyle as any) || 'smooth';
+      handlers.onParamChange(current);
+    });
+  });
+
   // Growth Mode Selectors
   const growthButtons = document.querySelectorAll<HTMLButtonElement>('.growth-btn');
   growthButtons.forEach((btn) => {
@@ -392,6 +407,7 @@ export function setupUI(
     growthButtons.forEach((b) => b.classList.toggle('active', b.dataset.growth === current.growthMode));
     surfaceStyleButtons.forEach((b) => b.classList.toggle('active', b.dataset.style === current.surfaceStyle));
     patternButtons.forEach((b) => b.classList.toggle('active', b.dataset.pattern === current.veinPattern));
+    cloudStyleButtons.forEach((b) => b.classList.toggle('active', b.dataset.cloudStyle === (current.cloudStyle ?? 'smooth')));
     if (groupVeinSegments) {
       groupVeinSegments.style.display = current.veinPattern === 'segmented' ? 'block' : 'none';
     }
