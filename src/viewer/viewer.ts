@@ -10,7 +10,7 @@ import {
   evalVeinAngle,
 } from '../geometry/organicField';
 import { generateCloudPuffCenters, evalFluffyCloudField } from '../geometry/cloudGenerator';
-import { generateHorizontalCloudPuffs, evalHorizontalCloudField } from '../geometry/horizontalCloudGenerator';
+import { generateHorizontalCloudPuffs, evalHorizontalTransmittance } from '../geometry/horizontalCloudGenerator';
 import { computeStripPhysicalMetrics } from '../geometry/stripPhysics';
 
 export type ViewMode = 'night' | 'day' | 'cutaway';
@@ -356,23 +356,15 @@ export function createLampViewer(container: HTMLElement): LampViewer {
           w,
           d,
           hH,
-          activeParams.cloudPuffDepth ?? 12.0,
-          activeParams.cloudFloretScale ?? 2.4
+          activeParams.cloudPuffDepth ?? 14.0,
+          activeParams.cloudFloretScale ?? 2.6
         );
-        const noise = createNoise3D(activeParams.organicSeed ?? 77);
 
         for (let i = 0; i < count; i++) {
           const x = positions[i * 3];
           const y = positions[i * 3 + 1];
           const z = positions[i * 3 + 2];
-          const u = Math.max(0, Math.min(0.96, z / hH));
-          const th = Math.atan2(y, x);
-
-          const { thickness } = evalHorizontalCloudField(u, th, activeParams, puffs, noise);
-          const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
-
-          const depthSpread = Math.min(0.80, 0.45 + (tMax - tMin) * 0.055);
-          transmittances[i] = 1.0 - depthSpread * tNorm;
+          transmittances[i] = evalHorizontalTransmittance(x, y, z, activeParams, puffs);
         }
       } else {
         const puffs = generateCloudPuffCenters(
@@ -402,7 +394,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
       }
 
       geo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
-      return geo; // Preserve 100% smooth continuous vertex normals on organic cloud shade
+      return toCreasedNormals(geo, (50 * Math.PI) / 180);
     }
     return toCreasedNormals(geo, (50 * Math.PI) / 180);
   }
@@ -913,7 +905,7 @@ export function createLampViewer(container: HTMLElement): LampViewer {
 
           const microTooth = activeParams?.cloudTurbulence ?? 0.35;
           const normalStrength = Math.max(0.0, Math.min(1.4, microTooth * 1.45));
-          mat.normalMap = normalStrength > 0.01 ? normalTex : null;
+          mat.normalMap = (!isHorizon && normalStrength > 0.01) ? normalTex : null;
           mat.normalScale.set(normalStrength, normalStrength);
           mat.vertexColors = false;
 

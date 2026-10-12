@@ -279,6 +279,68 @@ export function generateHorizontalCloudPuffs(
 }
 
 /**
+ * Evaluates physical optical transmittance for an exact 3D Euclidean surface point (x, y, z).
+ * - Exact distance to internal linear WS2812B LED strip (line segment along X at Y=0, Z=0)
+ * - 3D Euclidean distance to puff sphere boundaries
+ * - Delicate inter-sphere crevice saddle glow
+ * - Guarantees zero coordinate projection distortion, zero fake rings, zero dark blotches.
+ */
+export function evalHorizontalTransmittance(
+  x: number,
+  y: number,
+  z: number,
+  params: LampParameters,
+  puffs: HorizontalCloudPuff[]
+): number {
+  const width = params.horizonWidth ?? 220;
+  const trackW = width - 48.0;
+  const halfTrack = (trackW - 6.0) / 2;
+
+  // 1. Distance to horizontal LED strip line segment [-halfTrack, halfTrack] at Y=0, Z=0
+  const xClamped = Math.max(-halfTrack, Math.min(halfTrack, x));
+  const dx = x - xClamped;
+  const distLED = Math.sqrt(dx * dx + y * y + z * z);
+  const attLED = 1.0 / (1.0 + Math.pow(distLED / 65.0, 1.8));
+
+  // 2. Crevice detection between true 3D spheres
+  let d1 = 999.0;
+  let d2 = 999.0;
+
+  for (let p = 0; p < puffs.length; p++) {
+    const puff = puffs[p];
+    const px = x - puff.x;
+    const py = y - puff.y;
+    const pz = z - puff.z;
+    const dist = Math.sqrt(px * px + py * py + pz * pz);
+    const dSphere = Math.abs(dist - puff.r);
+
+    if (dSphere < d1) {
+      d2 = d1;
+      d1 = dSphere;
+    } else if (dSphere < d2) {
+      d2 = dSphere;
+    }
+  }
+
+  // Inter-sphere crevice saddle glow
+  const creviceSpread = 6.0;
+  const crevice = Math.exp(-Math.pow(d2 - d1, 2.0) / (2.0 * creviceSpread * creviceSpread));
+
+  // Subtle height attenuation (natural atmospheric haze toward summits)
+  const heightAtt = Math.max(0.70, 1.0 - (z / (params.horizonHeight ?? 105)) * 0.18);
+
+  // Optical transmittance in [0.72, 1.0]: creamy, warm, high-translucency PLA
+  const tMin = params.cloudMinThickness ?? 0.8;
+  const tMax = params.cloudMaxThickness ?? 6.4;
+  const depthFactor = Math.min(0.20, 0.08 + (tMax - tMin) * 0.018);
+
+  const tBase = 0.85 + 0.15 * attLED * heightAtt;
+  const tCrevice = 0.08 * crevice;
+
+  return Math.min(1.0, Math.max(0.68, tBase + tCrevice - depthFactor * (1.0 - attLED)));
+}
+
+/**
  * Evaluates the cloud field thickness for Three.js viewer color shading.
  */
 export function evalHorizontalCloudField(
@@ -375,10 +437,9 @@ export function evalHorizontalCloudField(
  * - Unions inner lithophane cavity spheres strictly smaller by wallThickness
  * - Continuous solid base collar hull (12mm tall) guarantees ZERO triangular gaps and flush seating
  * - Mandrel clearance pocket strictly 15.5mm tall (track is 14mm tall) to guarantee ZERO upper punch-through holes
- * - Warps outer surface with multi-scale cauliflower noise
+ * - Pristine, smooth mathematical surfaces without vertex-crumpling noise distortion
  */
 function buildCompleteCloudShadeManifold(wasm: any, params: LampParameters, puffs: HorizontalCloudPuff[]): MeshData {
-  const seed = params.organicSeed ?? 77;
   const width = params.horizonWidth ?? 220;
   const depth = params.horizonDepth ?? 85;
   const wallThickness = (params.cloudMinThickness ?? 0.9) + 1.3; // ~2.2mm nominal lithophane thickness
@@ -420,29 +481,8 @@ function buildCompleteCloudShadeManifold(wasm: any, params: LampParameters, puff
 
   const fullInnerCavity = wasm.Manifold.union([innerSolid, mandrelPocket]);
 
-  let hollowCloud = outerSolid.subtract(fullInnerCavity);
-
-  // Multi-scale cauliflower floret micro-tooth warp
-  const noise = createNoise3D(seed);
-  hollowCloud = hollowCloud.warp((vert: any) => {
-    const x = vert[0], y = vert[1], z = vert[2];
-    if (z > 5.0) {
-      const ease = Math.min(1.0, (z - 5.0) / 8.0);
-      const flowScale = 0.035;
-      const n = (
-        noise(x * flowScale + 12.3, y * flowScale + 55.7, z * flowScale + 31.9) * 1.15 +
-        noise(x * 0.10 + 42.1, y * 0.10 + 88.3, z * 0.10 + 17.5) * 0.65 +
-        noise(x * 0.25 + 61.3, y * 0.25 + 19.8, z * 0.25 + 84.2) * 0.30
-      ) * ease;
-
-      const len = Math.sqrt(x * x + y * y + (z - 20) * (z - 20));
-      if (len > 0.001) {
-        vert[0] += (x / len) * n;
-        vert[1] += (y / len) * n;
-        vert[2] += ((z - 20) / len) * n;
-      }
-    }
-  });
+  // Clean watertight subtraction: pure isotropic spheres and solid base collar
+  const hollowCloud = outerSolid.subtract(fullInnerCavity);
 
   const mesh = hollowCloud.getMesh();
   return {
