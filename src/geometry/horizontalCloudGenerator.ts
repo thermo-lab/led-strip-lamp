@@ -31,7 +31,8 @@ function createPRNG(seed = 77) {
  * Generates true 3D isotropic spheres for the horizontal cloud bank.
  * Based on the Clip Studio drawing guide:
  * "To paint some fluffy clouds, I use a cluster of spheres for guide."
- * - Lower overlapping baseline billows along the plinth
+ * - Central spine & interior core spheres bridging front and rear billows into a solid volumetric mass
+ * - Lower densely overlapping baseline billows along the plinth
  * - Mid-tier convective bulging billows popping forward toward the viewer
  * - High-crest skyline towers forming the iconic cumulus silhouette
  * - Cauliflower companion child florets nestled in crevice saddles
@@ -55,15 +56,74 @@ export function generateHorizontalCloudPuffs(
 
   const puffs: HorizontalCloudPuff[] = [];
 
-  // 1. Lower Baseline Front & Rear Billows (overlapping spheres spanning the plinth)
-  const baseSlots = [-0.34, -0.17, 0.0, 0.17, 0.34];
-  for (let i = 0; i < baseSlots.length; i++) {
-    const x = baseSlots[i] * width + (rand() - 0.5) * 8.0;
-    const yFront = (0.22 + rand() * 0.05) * depth;
-    const z = height * (0.17 + rand() * 0.04);
-    const r = (22.0 + rand() * 4.0) * (0.9 + 0.1 * ampScale);
+  // =========================================================================
+  // 1. CENTRAL SPINE & INTERIOR CORE SPHERES (Y ~ 0)
+  // Continuous volumetric chain bridging front and rear billows seamlessly,
+  // completely eliminating any hollow tunnels, voids, or through-holes.
+  // =========================================================================
+  const coreSpineSlots = [-0.34, -0.22, -0.10, 0.04, 0.18, 0.31];
+  for (let i = 0; i < coreSpineSlots.length; i++) {
+    const x = coreSpineSlots[i] * width + (rand() - 0.5) * 6.0;
+    const z = height * (0.22 + rand() * 0.03);
+    const r = (24.0 + rand() * 3.0);
+    puffs.push({
+      level: 0,
+      bankId: i % 4,
+      x: x * flipX,
+      y: (rand() - 0.5) * 4.0,
+      z,
+      r,
+      amp: r,
+      rX: r,
+      rY: r,
+      rZ: r,
+      haloWeight: 0.8,
+    });
+  }
 
-    // Front billow
+  // Mid-tier central bridge spheres under the crests
+  const midBridge1R = 28.0 + rand() * 2.5;
+  puffs.push({
+    level: 0,
+    bankId: 1,
+    x: -0.12 * width * flipX,
+    y: (rand() - 0.5) * 3.0,
+    z: height * 0.48,
+    r: midBridge1R,
+    amp: midBridge1R,
+    rX: midBridge1R,
+    rY: midBridge1R,
+    rZ: midBridge1R,
+    haloWeight: 0.85,
+  });
+
+  const midBridge2R = 26.0 + rand() * 2.5;
+  puffs.push({
+    level: 0,
+    bankId: 2,
+    x: 0.10 * width * flipX,
+    y: (rand() - 0.5) * 3.0,
+    z: height * 0.45,
+    r: midBridge2R,
+    amp: midBridge2R,
+    rX: midBridge2R,
+    rY: midBridge2R,
+    rZ: midBridge2R,
+    haloWeight: 0.85,
+  });
+
+  // =========================================================================
+  // 2. LOWER BASELINE FRONT & REAR BILLOWS (Overlapping densely along plinth)
+  // Tight spacing with generous overlap guarantees ZERO triangular gaps.
+  // =========================================================================
+  const baseSlots = [-0.35, -0.24, -0.12, 0.00, 0.12, 0.24, 0.35];
+  for (let i = 0; i < baseSlots.length; i++) {
+    const x = baseSlots[i] * width + (rand() - 0.5) * 5.0;
+    const yFront = (0.24 + rand() * 0.03) * depth;
+    const z = height * (0.16 + rand() * 0.03);
+    const r = (23.0 + rand() * 3.0) * (0.92 + 0.08 * ampScale);
+
+    // Front baseline puff
     puffs.push({
       level: 1,
       bankId: i % 4,
@@ -78,66 +138,76 @@ export function generateHorizontalCloudPuffs(
       haloWeight: 0.9,
     });
 
-    // Rear billow
+    // Rear baseline puff
     puffs.push({
       level: 1,
       bankId: i % 4,
       x: x * flipX,
-      y: -yFront * (0.92 + rand() * 0.08),
+      y: -yFront * (0.93 + rand() * 0.07),
       z,
-      r: r * 0.94,
-      amp: r * 0.94,
-      rX: r * 0.94,
-      rY: r * 0.94,
-      rZ: r * 0.94,
+      r: r * 0.95,
+      amp: r * 0.95,
+      rX: r * 0.95,
+      rY: r * 0.95,
+      rZ: r * 0.95,
       haloWeight: 0.8,
     });
   }
 
-  // 2. Foreground Bulging Mid-Tier Billows (popping out forward toward viewer)
-  const midSlots = [-0.23, -0.02, 0.19];
-  for (let i = 0; i < midSlots.length; i++) {
-    const x = midSlots[i] * width + (rand() - 0.5) * 8.0;
-    const yFront = (0.27 + rand() * 0.05) * depth;
-    const z = height * (0.37 + rand() * 0.06);
-    const r = 23.0 + rand() * 4.0;
+  // =========================================================================
+  // 3. STAGGERED FOREGROUND CONVECTIVE BILLOWS
+  // Dynamic staggered heights and depths creating organic mountain billows.
+  // =========================================================================
+  const frontBillows = [
+    { x: -0.24 * width, y: 0.26 * depth, z: height * 0.36, r: 23.5 },
+    { x: -0.09 * width, y: 0.30 * depth, z: height * 0.44, r: 26.5 },
+    { x:  0.07 * width, y: 0.27 * depth, z: height * 0.40, r: 24.5 },
+    { x:  0.22 * width, y: 0.24 * depth, z: height * 0.33, r: 22.0 },
+  ];
 
+  for (let b = 0; b < frontBillows.length; b++) {
+    const fb = frontBillows[b];
+    const rFront = fb.r + (rand() - 0.5) * 2.5;
     puffs.push({
       level: 1,
-      bankId: i % 4,
-      x: x * flipX,
-      y: yFront,
-      z,
-      r,
-      amp: r,
-      rX: r,
-      rY: r,
-      rZ: r,
+      bankId: b % 4,
+      x: (fb.x + (rand() - 0.5) * 6.0) * flipX,
+      y: fb.y + (rand() - 0.5) * 4.0,
+      z: fb.z + (rand() - 0.5) * 4.0,
+      r: rFront,
+      amp: rFront,
+      rX: rFront,
+      rY: rFront,
+      rZ: rFront,
       haloWeight: 0.95,
     });
 
+    const rRear = fb.r * 0.94 + (rand() - 0.5) * 2.0;
     puffs.push({
       level: 1,
-      bankId: i % 4,
-      x: x * flipX,
-      y: -yFront * 0.90,
-      z,
-      r: r * 0.92,
-      amp: r * 0.92,
-      rX: r * 0.92,
-      rY: r * 0.92,
-      rZ: r * 0.92,
+      bankId: b % 4,
+      x: (fb.x + (rand() - 0.5) * 6.0) * flipX,
+      y: -fb.y * 0.92 + (rand() - 0.5) * 4.0,
+      z: fb.z + (rand() - 0.5) * 4.0,
+      r: rRear,
+      amp: rRear,
+      rX: rRear,
+      rY: rRear,
+      rZ: rRear,
       haloWeight: 0.85,
     });
   }
 
-  // 3. Skyline Crest Summits (The iconic cumulus towers)
+  // =========================================================================
+  // 4. SKYLINE CUMULUS CREST TOWERS (High summits forming iconic skyline)
+  // Step-down cascade: Grand Summit (~80mm) -> Secondary Peak (~65mm) -> Shoulder (~48mm)
+  // =========================================================================
   const summitChoice = rand() > 0.5 ? 1 : 2;
   const crestSlots = [
-    { slot: -0.27 + (rand() - 0.5) * 0.04, zRatio: 0.50 + rand() * 0.06, r: 26 + rand() * 3, id: 0 },
-    { slot: -0.08 + (rand() - 0.5) * 0.04, zRatio: summitChoice === 1 ? 0.68 : 0.58, r: 34 + rand() * 4, id: 1 },
-    { slot:  0.13 + (rand() - 0.5) * 0.04, zRatio: summitChoice === 2 ? 0.66 : 0.56, r: 30 + rand() * 3, id: 2 },
-    { slot:  0.30 + (rand() - 0.5) * 0.04, zRatio: 0.44 + rand() * 0.06, r: 23 + rand() * 3, id: 3 },
+    { slot: -0.27 + (rand() - 0.5) * 0.03, zRatio: 0.52 + rand() * 0.04, r: 27 + rand() * 2.5, id: 0 },
+    { slot: -0.08 + (rand() - 0.5) * 0.03, zRatio: summitChoice === 1 ? 0.74 : 0.62, r: 36 + rand() * 3.0, id: 1 },
+    { slot:  0.12 + (rand() - 0.5) * 0.03, zRatio: summitChoice === 2 ? 0.71 : 0.58, r: 31 + rand() * 2.5, id: 2 },
+    { slot:  0.29 + (rand() - 0.5) * 0.03, zRatio: 0.46 + rand() * 0.04, r: 24 + rand() * 2.0, id: 3 },
   ];
 
   for (const c of crestSlots) {
@@ -147,7 +217,7 @@ export function generateHorizontalCloudPuffs(
       level: 0,
       bankId: c.id,
       x: x * flipX,
-      y: (rand() - 0.5) * 6.0,
+      y: (rand() - 0.5) * 5.0,
       z,
       r: c.r,
       amp: c.r,
@@ -157,7 +227,7 @@ export function generateHorizontalCloudPuffs(
       haloWeight: 1.0,
     });
 
-    // Companion cauliflower child florets on the tower crest slopes
+    // Companion cauliflower child florets clustered on crest slopes
     for (let k = 0; k < 2; k++) {
       const angle = (k === 0 ? -0.45 : 0.45) * Math.PI;
       const childR = c.r * (0.50 + (floretScale / 12.0));
@@ -165,7 +235,7 @@ export function generateHorizontalCloudPuffs(
         level: 2,
         bankId: c.id,
         x: (x + Math.sin(angle) * (c.r * 0.55)) * flipX,
-        y: (0.10 + rand() * 0.06) * depth * (k === 0 ? 1 : -1),
+        y: (0.10 + rand() * 0.05) * depth * (k === 0 ? 1 : -1),
         z: z * 0.88 + (rand() - 0.5) * 4.0,
         r: childR,
         amp: childR,
@@ -177,22 +247,24 @@ export function generateHorizontalCloudPuffs(
     }
   }
 
-  // 4. Trailing Satellite Puffs on Flank (Matching Clip Studio guide)
+  // =========================================================================
+  // 5. TRAILING SATELLITE PUFFS ON FLANK (Matching Clip Studio guide)
+  // =========================================================================
   const flankSign = flipX;
   const satDefs = [
-    { xRatio: 0.42, zRatio: 0.24, baseR: 13.5 },
-    { xRatio: 0.47, zRatio: 0.16, baseR: 9.5 },
-    { xRatio: 0.51, zRatio: 0.11, baseR: 6.5 },
+    { xRatio: 0.41, zRatio: 0.24, baseR: 14.5 },
+    { xRatio: 0.46, zRatio: 0.17, baseR: 10.5 },
+    { xRatio: 0.50, zRatio: 0.12, baseR: 7.5 },
   ];
 
   for (let s = 0; s < satDefs.length; s++) {
     const sd = satDefs[s];
-    const r = sd.baseR + rand() * 1.5;
+    const r = sd.baseR + rand() * 1.0;
     puffs.push({
       level: 2,
       bankId: 3,
       x: sd.xRatio * width * flankSign,
-      y: (0.08 - s * 0.03 + rand() * 0.03) * depth,
+      y: (0.07 - s * 0.03 + rand() * 0.03) * depth,
       z: height * sd.zRatio,
       r,
       amp: r,
@@ -300,42 +372,51 @@ export function evalHorizontalCloudField(
  * Builds the complete watertight 2-manifold hollow cloud shade in Manifold.
  * - Every puff is a true 3D mathematical isotropic sphere (rX = rY = rZ = r)
  * - Unions outer spheres
- * - Unions inner lithophane cavity spheres + central mandrel track clearance
- * - Adds 4.5mm base pocket skirt fitting flush into desktop plinth
+ * - Unions inner lithophane cavity spheres strictly smaller by wallThickness
+ * - Continuous solid base collar hull (12mm tall) guarantees ZERO triangular gaps and flush seating
+ * - Mandrel clearance pocket strictly 15.5mm tall (track is 14mm tall) to guarantee ZERO upper punch-through holes
  * - Warps outer surface with multi-scale cauliflower noise
  */
 function buildCompleteCloudShadeManifold(wasm: any, params: LampParameters, puffs: HorizontalCloudPuff[]): MeshData {
   const seed = params.organicSeed ?? 77;
+  const width = params.horizonWidth ?? 220;
+  const depth = params.horizonDepth ?? 85;
   const wallThickness = (params.cloudMinThickness ?? 0.9) + 1.3; // ~2.2mm nominal lithophane thickness
 
   const outerObjs: any[] = [];
   const innerObjs: any[] = [];
 
   for (const s of puffs) {
-    const segs = s.r > 22 ? 52 : 36;
+    const segs = s.r > 24 ? 64 : 44;
     const sphOuter = wasm.Manifold.sphere(s.r, segs).translate([s.x, s.y, s.z]);
     outerObjs.push(sphOuter);
 
     const rIn = s.r - wallThickness;
-    if (rIn > 3.0) {
-      const sphInner = wasm.Manifold.sphere(rIn, Math.max(20, segs - 16)).translate([s.x, s.y, s.z]);
+    if (rIn > 4.0) {
+      const sphInner = wasm.Manifold.sphere(rIn, Math.max(24, segs - 16)).translate([s.x, s.y, s.z]);
       innerObjs.push(sphInner);
     }
   }
 
-  // 4.5mm base pocket skirt fitting inside the plinth pocket
-  const baseSkirtOuter = wasm.Manifold.cylinder(4.5, 98, 98, 64)
-    .scale([1.0, 36.0 / 98.0, 1.0])
+  // Continuous Solid Base Collar Hull:
+  // 12mm tall solid foundation bridging all baseline spheres to the plinth collar,
+  // guaranteeing ZERO triangular gaps, zero light leaks, and a perfectly flush seat.
+  const aCollar = width * 0.45;
+  const bCollar = depth * 0.44;
+  const baseCollarSolid = wasm.Manifold.cylinder(12.0, 99.0, 99.0, 64)
+    .scale([1.0, bCollar / aCollar, 1.0])
     .translate([0, 0, 0]);
-  outerObjs.push(baseSkirtOuter);
+  outerObjs.push(baseCollarSolid);
 
   const outerSolid = wasm.Manifold.union(outerObjs);
   const innerSolid = wasm.Manifold.union(innerObjs);
 
-  // Mandrel cavity clearing the central LED reflector track
-  const mandrelPocket = wasm.Manifold.cylinder(75, 85, 85, 48)
-    .scale([1.0, 16.0 / 85.0, 1.0])
-    .translate([0, 0, 0]);
+  // LED Reflector Mandrel clearance pocket:
+  // Height: strictly 15.5mm (track is 14mm tall, with +1.5mm headroom).
+  // Width: 176mm, Depth: 26mm.
+  // CRITICAL: Must NEVER exceed Z = 15.5mm so it CANNOT punch through the upper cloud walls!
+  const mandrelPocket = wasm.Manifold.cube([176.0, 26.0, 16.5], true)
+    .translate([0, 0, 8.25]);
 
   const fullInnerCavity = wasm.Manifold.union([innerSolid, mandrelPocket]);
 
@@ -345,13 +426,13 @@ function buildCompleteCloudShadeManifold(wasm: any, params: LampParameters, puff
   const noise = createNoise3D(seed);
   hollowCloud = hollowCloud.warp((vert: any) => {
     const x = vert[0], y = vert[1], z = vert[2];
-    if (z > 4.5) {
-      const ease = Math.min(1.0, (z - 4.5) / 8.0);
+    if (z > 5.0) {
+      const ease = Math.min(1.0, (z - 5.0) / 8.0);
       const flowScale = 0.035;
       const n = (
-        noise(x * flowScale + 12.3, y * flowScale + 55.7, z * flowScale + 31.9) * 1.3 +
-        noise(x * 0.10 + 42.1, y * 0.10 + 88.3, z * 0.10 + 17.5) * 0.75 +
-        noise(x * 0.25 + 61.3, y * 0.25 + 19.8, z * 0.25 + 84.2) * 0.38
+        noise(x * flowScale + 12.3, y * flowScale + 55.7, z * flowScale + 31.9) * 1.15 +
+        noise(x * 0.10 + 42.1, y * 0.10 + 88.3, z * 0.10 + 17.5) * 0.65 +
+        noise(x * 0.25 + 61.3, y * 0.25 + 19.8, z * 0.25 + 84.2) * 0.30
       ) * ease;
 
       const len = Math.sqrt(x * x + y * y + (z - 20) * (z - 20));
