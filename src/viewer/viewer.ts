@@ -341,50 +341,57 @@ export function createLampViewer(container: HTMLElement): LampViewer {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
     geo.setIndex(new THREE.BufferAttribute(part.mesh.triVerts, 1));
-    geo.computeVertexNormals();
-    if ((activeParams?.lampArchetype === 'clouds' || activeParams?.lampArchetype === 'horizon') && part.id === 'body') {
-      const transmittances = new Float32Array(count);
-      const tMin = activeParams.cloudMinThickness ?? 0.8;
-      const tMax = activeParams.cloudMaxThickness ?? 6.4;
+    const isCloudBody = Boolean(activeParams && (activeParams.lampArchetype === 'clouds' || activeParams.lampArchetype === 'horizon') && part.id === 'body');
+    const creaseAngle = isCloudBody ? (28 * Math.PI) / 180 : (50 * Math.PI) / 180;
+    const finalGeo = toCreasedNormals(geo, creaseAngle);
 
-      if (activeParams.lampArchetype === 'horizon') {
-        const w = activeParams.horizonWidth ?? 220;
-        const d = activeParams.horizonDepth ?? 85;
-        const hH = activeParams.horizonHeight ?? 105;
+    if (isCloudBody && activeParams) {
+      const p = activeParams;
+      const posAttr = finalGeo.getAttribute('position');
+      const finalCount = posAttr.count;
+      const finalPositions = posAttr.array;
+      const transmittances = new Float32Array(finalCount);
+      const tMin = p.cloudMinThickness ?? 0.8;
+      const tMax = p.cloudMaxThickness ?? 6.4;
+
+      if (p.lampArchetype === 'horizon') {
+        const w = p.horizonWidth ?? 220;
+        const d = p.horizonDepth ?? 85;
+        const hH = p.horizonHeight ?? 105;
         const puffs = generateHorizontalCloudPuffs(
-          activeParams.organicSeed ?? 77,
+          p.organicSeed ?? 77,
           w,
           d,
           hH,
-          activeParams.cloudPuffDepth ?? 14.0,
-          activeParams.cloudFloretScale ?? 2.6,
-          activeParams.cloudStyle ?? 'smooth'
+          p.cloudPuffDepth ?? 14.0,
+          p.cloudFloretScale ?? 2.6,
+          p.cloudStyle ?? 'smooth'
         );
 
-        for (let i = 0; i < count; i++) {
-          const x = positions[i * 3];
-          const y = positions[i * 3 + 1];
-          const z = positions[i * 3 + 2];
-          transmittances[i] = evalHorizontalTransmittance(x, y, z, activeParams, puffs);
+        for (let i = 0; i < finalCount; i++) {
+          const x = finalPositions[i * 3];
+          const y = finalPositions[i * 3 + 1];
+          const z = finalPositions[i * 3 + 2];
+          transmittances[i] = evalHorizontalTransmittance(x, y, z, p, puffs);
         }
       } else {
         const puffs = generateCloudPuffCenters(
-          activeParams.organicSeed ?? 77,
+          p.organicSeed ?? 77,
           h,
-          activeParams.cloudPuffDensity ?? 22,
-          activeParams.cloudPuffDepth ?? 12.0,
-          activeParams.cloudFloretScale ?? 2.4
+          p.cloudPuffDensity ?? 22,
+          p.cloudPuffDepth ?? 12.0,
+          p.cloudFloretScale ?? 2.4
         );
-        const noise = createNoise3D(activeParams.organicSeed ?? 77);
+        const noise = createNoise3D(p.organicSeed ?? 77);
 
-        for (let i = 0; i < count; i++) {
-          const x = positions[i * 3];
-          const y = positions[i * 3 + 1];
-          const z = positions[i * 3 + 2];
+        for (let i = 0; i < finalCount; i++) {
+          const x = finalPositions[i * 3];
+          const y = finalPositions[i * 3 + 1];
+          const z = finalPositions[i * 3 + 2];
           const u = Math.max(0, Math.min(1, z / h));
           const th = Math.atan2(y, x);
 
-          const { thickness } = evalFluffyCloudField(u, th, activeParams, puffs, noise);
+          const { thickness } = evalFluffyCloudField(u, th, p, puffs, noise);
           const tNorm = Math.max(0, Math.min(1, (thickness - tMin) / Math.max(0.1, tMax - tMin)));
 
           // Physical Transmittance: 1.0 at thin glowing intersections (0.8mm)
@@ -394,10 +401,10 @@ export function createLampViewer(container: HTMLElement): LampViewer {
         }
       }
 
-      geo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
-      return geo; // Preserve 100% smooth continuous indexed vertex normals on organic cloud shade
+      finalGeo.setAttribute('transmittance', new THREE.BufferAttribute(transmittances, 1));
     }
-    return toCreasedNormals(geo, (50 * Math.PI) / 180);
+
+    return finalGeo;
   }
 
   // Build physical WS2812B strips & 5050 LEDs seated securely in the 10.8mm captive C-channel

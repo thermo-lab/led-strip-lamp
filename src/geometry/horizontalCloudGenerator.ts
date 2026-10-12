@@ -268,73 +268,72 @@ export function generateHorizontalCloudPuffs(
   });
 
   // =========================================================================
-  // 6. ROUGH STYLE: ORGANIC CONVECTIVE CAULIFLOWER FLORETS
-  // When cloudStyle === 'rough', add an organic cluster of secondary and tertiary
-  // cauliflower billows nestled along the upper and front crests.
-  // Each floret is 60-75% embedded and angled upward (elevation >= 18°),
-  // creating rich, tactile, boiling cumulus texture with ZERO downward overhangs!
+  // 6. ROUGH STYLE: SECONDARY & TERTIARY CONVECTIVE BILLOW LOBES
+  // Matching Clip Studio sphere cluster: intermediate spheres (R = 15 to 22 mm)
+  // nestled into saddle valleys and crest slopes to form rich boiling cumulus!
   // =========================================================================
   if (cloudStyle === 'rough') {
-    const keyBillows = puffs.filter(p => p.level === 0 || (p.level === 1 && p.z > height * 0.28));
-
-    for (const parent of keyBillows) {
-      const isSummit = parent.level === 0;
-      const numLobes = isSummit ? 4 + Math.floor(rand() * 3) : 3 + Math.floor(rand() * 2);
-
-      for (let k = 0; k < numLobes; k++) {
-        // Distributed azimuth phi around front-facing and lateral directions
-        const phi = (-0.65 + (k / (numLobes - 1)) * 1.30 + (rand() - 0.5) * 0.35) * Math.PI;
-        // Polar elevation angle: 18° to 75° above horizontal to guarantee 100% support-free printability
-        const elev = (0.20 + rand() * 0.55) * (Math.PI / 2);
-
-        const ux = Math.cos(elev) * Math.sin(phi);
-        const uy = Math.cos(elev) * Math.abs(Math.cos(phi)) * 0.85; // Biased toward front (+Y)
-        const uz = Math.sin(elev); // Always > 0 (pointing upwards)
-
-        // Varied floret radius: 32% to 56% of parent radius
-        const childR = parent.r * (0.32 + rand() * 0.24) * (0.85 + (floretScale / 12.0) * 0.3);
-        // Protrusion depth: 25% to 40% of child radius
-        const protrusion = (0.25 + rand() * 0.18) * childR;
-        const dist = parent.r - childR + protrusion;
-
-        const fx = parent.x + ux * dist;
-        const fy = parent.y + uy * dist;
-        const fz = parent.z + uz * dist;
-
-        puffs.push({
-          level: 2,
-          bankId: parent.bankId,
-          x: fx,
-          y: fy,
-          z: fz,
-          r: childR,
-          amp: childR,
-          rX: childR,
-          rY: childR,
-          rZ: childR,
-          haloWeight: 0.9,
-        });
-      }
-    }
-
-    // Intermediate valley transition florets along the front saddle troughs
-    const valleySlots = [-0.30, -0.18, -0.05, 0.08, 0.20, 0.31];
-    for (let i = 0; i < valleySlots.length; i++) {
-      const vx = valleySlots[i] * width + (rand() - 0.5) * 6.0;
-      const vy = (0.22 + rand() * 0.05) * depth;
-      const vz = height * (0.25 + rand() * 0.08);
-      const vr = 12.0 + rand() * 4.0;
+    // A. Saddle trough convective billows (rising between the main peaks)
+    const saddles = [
+      { x: -0.18 * width, y: 0.14 * depth, z: height * 0.58, r: 20.0 },
+      { x:  0.03 * width, y: 0.16 * depth, z: height * 0.60, r: 22.0 },
+      { x:  0.21 * width, y: 0.12 * depth, z: height * 0.48, r: 18.5 },
+      { x: -0.29 * width, y: 0.10 * depth, z: height * 0.44, r: 17.5 },
+      // Central ascending billowing plume
+      { x: -0.04 * width, y: 0.20 * depth, z: height * 0.54, r: 21.5 },
+      { x:  0.10 * width, y: 0.18 * depth, z: height * 0.52, r: 19.5 },
+    ];
+    for (const s of saddles) {
+      const childR = s.r + rand() * 2.0;
       puffs.push({
         level: 2,
-        bankId: i % 4,
-        x: vx * flipX,
-        y: vy,
-        z: vz,
-        r: vr,
-        amp: vr,
-        rX: vr,
-        rY: vr,
-        rZ: vr,
+        bankId: 2,
+        x: (s.x + (rand() - 0.5) * 3.0) * flipX,
+        y: s.y + (rand() - 0.5) * 3.0,
+        z: s.z + (rand() - 0.5) * 3.0,
+        r: childR,
+        amp: childR,
+        rX: childR,
+        rY: childR,
+        rZ: childR,
+        haloWeight: 0.90,
+      });
+    }
+
+    // B. Convective floret billows clustered along the upper crest towers
+    // (medium size spheres R = 15 to 20mm, deeply embedded, creating natural boiling cumulus peaks)
+    const crestFlorets = [
+      // Grand summit companion billows
+      { x: -0.13 * width, y: 0.08 * depth, z: height * 0.77, r: 18.5 },
+      { x: -0.02 * width, y: 0.06 * depth, z: height * 0.80, r: 20.5 },
+      { x: -0.07 * width, y: -0.08 * depth, z: height * 0.76, r: 19.0 },
+      // Secondary peak companion billows
+      { x:  0.07 * width, y: 0.09 * depth, z: height * 0.68, r: 17.5 },
+      { x:  0.18 * width, y: 0.07 * depth, z: height * 0.66, r: 17.0 },
+      // Left shoulder billow
+      { x: -0.23 * width, y: 0.11 * depth, z: height * 0.55, r: 16.5 },
+      { x: -0.32 * width, y: 0.08 * depth, z: height * 0.42, r: 15.5 },
+      // Front face convective clusters (nestled between baseline and mid-billows)
+      { x: -0.16 * width, y: 0.27 * depth, z: height * 0.28, r: 16.0 },
+      { x: -0.01 * width, y: 0.28 * depth, z: height * 0.31, r: 17.5 },
+      { x:  0.14 * width, y: 0.26 * depth, z: height * 0.27, r: 15.5 },
+      { x:  0.26 * width, y: 0.22 * depth, z: height * 0.24, r: 15.0 },
+      // Lateral flank cascades
+      { x:  0.34 * width, y: 0.10 * depth, z: height * 0.36, r: 15.5 },
+    ];
+    for (const cf of crestFlorets) {
+      const childR = cf.r + (rand() - 0.5) * 1.5;
+      puffs.push({
+        level: 2,
+        bankId: 1,
+        x: (cf.x + (rand() - 0.5) * 3.0) * flipX,
+        y: cf.y + (rand() - 0.5) * 3.0,
+        z: cf.z + (rand() - 0.5) * 2.0,
+        r: childR,
+        amp: childR,
+        rX: childR,
+        rY: childR,
+        rZ: childR,
         haloWeight: 0.88,
       });
     }
