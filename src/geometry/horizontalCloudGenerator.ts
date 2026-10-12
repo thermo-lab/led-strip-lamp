@@ -7,6 +7,7 @@ export interface HorizontalCloudPuff {
   x: number;
   y: number;
   z: number;
+  r: number;
   amp: number;
   rX: number;
   rY: number;
@@ -27,12 +28,16 @@ function createPRNG(seed = 77) {
 }
 
 /**
- * Generates hierarchical cumulus puff centers for the panoramic landscape cloud bank:
- * - 4 Grand Mother Banks (towers) anchoring the skyline
- * - 3 Convective Father Lobes per bank with upward convection draft
- * - Lower roll billows rolling smoothly down toward the base
- * - Intermediate Broccoli Child Florets clustered in saddles
- * - Rear atmospheric billows
+ * Generates true 3D isotropic spheres for the horizontal cloud bank.
+ * Based on the Clip Studio drawing guide:
+ * "To paint some fluffy clouds, I use a cluster of spheres for guide."
+ * - Lower overlapping baseline billows along the plinth
+ * - Mid-tier convective bulging billows popping forward toward the viewer
+ * - High-crest skyline towers forming the iconic cumulus silhouette
+ * - Cauliflower companion child florets nestled in crevice saddles
+ * - Trailing satellite puffs on the flank
+ *
+ * Every puff is a TRUE 3D SPHERE with scalar radius r (rX = rY = rZ = r).
  */
 export function generateHorizontalCloudPuffs(
   seed = 77,
@@ -45,205 +50,164 @@ export function generateHorizontalCloudPuffs(
   const rand = createPRNG(seed);
   const ampScale = puffDepth / 12.0;
 
+  // Mirroring orientation so trailing satellites are placed on one flank
+  const flipX = rand() > 0.5 ? 1 : -1;
+
   const puffs: HorizontalCloudPuff[] = [];
 
-  // Tutorial Guide Sphere Cluster (inspired by Clip Studio cloud guide):
-  // 1. Lower Baseline Chain (5 overlapping spheres spanning the width)
-  const baseSlots = [-0.34, -0.18, 0.02, 0.20, 0.36];
-  baseSlots.forEach((slot, i) => {
-    const x = slot * width + (rand() - 0.5) * 8.0;
-    const yFront = (0.28 + rand() * 0.05) * depth;
-    const z = height * (0.16 + rand() * 0.04);
-    const rX = 22.0 + rand() * 3.0;
-    const rY = (18.0 + rand() * 3.0) * ampScale;
-    const rZ = 16.0 + rand() * 2.5;
-    const amp = (15.0 + rand() * 3.0) * ampScale;
+  // 1. Lower Baseline Front & Rear Billows (overlapping spheres spanning the plinth)
+  const baseSlots = [-0.34, -0.17, 0.0, 0.17, 0.34];
+  for (let i = 0; i < baseSlots.length; i++) {
+    const x = baseSlots[i] * width + (rand() - 0.5) * 8.0;
+    const yFront = (0.22 + rand() * 0.05) * depth;
+    const z = height * (0.17 + rand() * 0.04);
+    const r = (22.0 + rand() * 4.0) * (0.9 + 0.1 * ampScale);
 
-    // Front baseline puff
+    // Front billow
     puffs.push({
       level: 1,
       bankId: i % 4,
-      x,
+      x: x * flipX,
       y: yFront,
       z,
-      rX,
-      rY,
-      rZ,
-      amp,
+      r,
+      amp: r,
+      rX: r,
+      rY: r,
+      rZ: r,
       haloWeight: 0.9,
     });
 
-    // Rear baseline puff
+    // Rear billow
     puffs.push({
       level: 1,
       bankId: i % 4,
-      x,
-      y: -yFront,
+      x: x * flipX,
+      y: -yFront * (0.92 + rand() * 0.08),
       z,
-      rX,
-      rY,
-      rZ,
-      amp: amp * 0.9,
+      r: r * 0.94,
+      amp: r * 0.94,
+      rX: r * 0.94,
+      rY: r * 0.94,
+      rZ: r * 0.94,
       haloWeight: 0.8,
     });
-  });
+  }
 
-  // 2. Mid-Tier Bulging Spheres (Foreground billows that pop forward toward viewer)
-  const midSlots = [-0.26, -0.08, 0.12, 0.28];
-  midSlots.forEach((slot, i) => {
-    const x = slot * width + (rand() - 0.5) * 10.0;
-    const yFront = (0.33 + rand() * 0.06) * depth;
-    const z = height * (0.38 + rand() * 0.08);
-    const rX = 24.0 + rand() * 4.0;
-    const rY = (21.0 + rand() * 4.0) * ampScale;
-    const rZ = 20.0 + rand() * 3.0;
-    const amp = (17.0 + rand() * 3.5) * ampScale;
+  // 2. Foreground Bulging Mid-Tier Billows (popping out forward toward viewer)
+  const midSlots = [-0.23, -0.02, 0.19];
+  for (let i = 0; i < midSlots.length; i++) {
+    const x = midSlots[i] * width + (rand() - 0.5) * 8.0;
+    const yFront = (0.27 + rand() * 0.05) * depth;
+    const z = height * (0.37 + rand() * 0.06);
+    const r = 23.0 + rand() * 4.0;
 
     puffs.push({
       level: 1,
       bankId: i % 4,
-      x,
+      x: x * flipX,
       y: yFront,
       z,
-      rX,
-      rY,
-      rZ,
-      amp,
+      r,
+      amp: r,
+      rX: r,
+      rY: r,
+      rZ: r,
       haloWeight: 0.95,
     });
 
     puffs.push({
       level: 1,
       bankId: i % 4,
-      x,
-      y: -yFront,
+      x: x * flipX,
+      y: -yFront * 0.90,
       z,
-      rX,
-      rY,
-      rZ,
-      amp: amp * 0.9,
+      r: r * 0.92,
+      amp: r * 0.92,
+      rX: r * 0.92,
+      rY: r * 0.92,
+      rZ: r * 0.92,
       haloWeight: 0.85,
     });
-  });
+  }
 
-  // 3. High-Crest Skyline Spheres (Top rounded domes forming the cumulus skyline)
+  // 3. Skyline Crest Summits (The iconic cumulus towers)
   const summitChoice = rand() > 0.5 ? 1 : 2;
   const crestSlots = [
-    { slot: -0.30 + (rand() - 0.5) * 0.04, zRatio: 0.65 + rand() * 0.08, rX: 28, rY: 26, rZ: 24, id: 0 },
-    { slot: -0.07 + (rand() - 0.5) * 0.05, zRatio: summitChoice === 1 ? 0.98 : 0.86, rX: 35, rY: 30, rZ: 30, id: 1 },
-    { slot:  0.16 + (rand() - 0.5) * 0.05, zRatio: summitChoice === 2 ? 0.98 : 0.84, rX: 33, rY: 28, rZ: 28, id: 2 },
-    { slot:  0.34 + (rand() - 0.5) * 0.04, zRatio: 0.60 + rand() * 0.08, rX: 26, rY: 24, rZ: 22, id: 3 },
+    { slot: -0.27 + (rand() - 0.5) * 0.04, zRatio: 0.50 + rand() * 0.06, r: 26 + rand() * 3, id: 0 },
+    { slot: -0.08 + (rand() - 0.5) * 0.04, zRatio: summitChoice === 1 ? 0.68 : 0.58, r: 34 + rand() * 4, id: 1 },
+    { slot:  0.13 + (rand() - 0.5) * 0.04, zRatio: summitChoice === 2 ? 0.66 : 0.56, r: 30 + rand() * 3, id: 2 },
+    { slot:  0.30 + (rand() - 0.5) * 0.04, zRatio: 0.44 + rand() * 0.06, r: 23 + rand() * 3, id: 3 },
   ];
 
-  crestSlots.forEach((c) => {
+  for (const c of crestSlots) {
     const x = c.slot * width;
     const z = height * c.zRatio;
-    const rX = c.rX * (width / 220);
-    const rY = c.rY * (depth / 85);
-    const rZ = c.rZ * (height / 105);
-    const amp = (18.0 + rand() * 4.0) * ampScale;
-
     puffs.push({
       level: 0,
       bankId: c.id,
-      x,
-      y: 0,
-      z: z * 0.88,
-      rX,
-      rY,
-      rZ: rZ * 0.8,
-      amp,
+      x: x * flipX,
+      y: (rand() - 0.5) * 6.0,
+      z,
+      r: c.r,
+      amp: c.r,
+      rX: c.r,
+      rY: c.r,
+      rZ: c.r,
       haloWeight: 1.0,
     });
 
-    // Peak dome
-    puffs.push({
-      level: 0,
-      bankId: c.id,
-      x: x + (rand() - 0.5) * 6.0,
-      y: (rand() - 0.5) * 4.0,
-      z: z,
-      rX: rX * 0.75,
-      rY: rY * 0.75,
-      rZ: rZ * 0.60,
-      amp: (16.0 + rand() * 3.0) * ampScale,
-      haloWeight: 1.0,
-    });
-
-    // Companion cauliflower sub-lobes clustered on crest slopes
+    // Companion cauliflower child florets on the tower crest slopes
     for (let k = 0; k < 2; k++) {
-      const angle = (k === 0 ? -0.42 : 0.42) * Math.PI;
+      const angle = (k === 0 ? -0.45 : 0.45) * Math.PI;
+      const childR = c.r * (0.50 + (floretScale / 12.0));
       puffs.push({
-        level: 1,
+        level: 2,
         bankId: c.id,
-        x: x + Math.sin(angle) * (rX * 0.50),
-        y: (0.12 + rand() * 0.08) * depth,
-        z: z * 0.82 + (rand() - 0.5) * 6.0,
-        rX: rX * 0.55,
-        rY: (16.0 + rand() * 3.0) * ampScale,
-        rZ: rZ * 0.52,
-        amp: (12.5 + rand() * 2.5) * ampScale,
+        x: (x + Math.sin(angle) * (c.r * 0.55)) * flipX,
+        y: (0.10 + rand() * 0.06) * depth * (k === 0 ? 1 : -1),
+        z: z * 0.88 + (rand() - 0.5) * 4.0,
+        r: childR,
+        amp: childR,
+        rX: childR,
+        rY: childR,
+        rZ: childR,
         haloWeight: 0.85,
       });
     }
-  });
+  }
 
-  // 4. Trailing Satellite Florets on Flanks (As shown in Clip Studio guide)
-  puffs.push({
-    level: 2,
-    bankId: 3,
-    x: 0.42 * width,
-    y: (0.16 + rand() * 0.05) * depth,
-    z: height * 0.32,
-    rX: 15.0,
-    rY: 13.0 * ampScale,
-    rZ: 13.0,
-    amp: 9.0 * ampScale,
-    haloWeight: 0.8,
-  });
+  // 4. Trailing Satellite Puffs on Flank (Matching Clip Studio guide)
+  const flankSign = flipX;
+  const satDefs = [
+    { xRatio: 0.42, zRatio: 0.24, baseR: 13.5 },
+    { xRatio: 0.47, zRatio: 0.16, baseR: 9.5 },
+    { xRatio: 0.51, zRatio: 0.11, baseR: 6.5 },
+  ];
 
-  puffs.push({
-    level: 2,
-    bankId: 3,
-    x: 0.46 * width,
-    y: (0.08 + rand() * 0.04) * depth,
-    z: height * 0.22,
-    rX: 11.0,
-    rY: 9.0 * ampScale,
-    rZ: 9.0,
-    amp: 7.0 * ampScale,
-    haloWeight: 0.75,
-  });
-
-  // 5. Nested Broccoli Florets around mid-tier crevices
-  if (floretScale > 0.1) {
-    for (let k = 0; k < 8; k++) {
-      const u = 0.25 + (k / 7) * 0.55;
-      const slotX = (-0.32 + (k / 7) * 0.64) * width + (rand() - 0.5) * 10.0;
-      const y = (0.28 + rand() * 0.06) * depth;
-      const z = height * u;
-
-      puffs.push({
-        level: 2,
-        bankId: k % 4,
-        x: slotX,
-        y,
-        z,
-        rX: 12.0 + rand() * 3.0,
-        rY: 11.0 + rand() * 3.0,
-        rZ: 10.0 + rand() * 2.5,
-        amp: (floretScale / 2.4) * (3.0 + rand() * 1.8),
-        haloWeight: 0.70,
-      });
-    }
+  for (let s = 0; s < satDefs.length; s++) {
+    const sd = satDefs[s];
+    const r = sd.baseR + rand() * 1.5;
+    puffs.push({
+      level: 2,
+      bankId: 3,
+      x: sd.xRatio * width * flankSign,
+      y: (0.08 - s * 0.03 + rand() * 0.03) * depth,
+      z: height * sd.zRatio,
+      r,
+      amp: r,
+      rX: r,
+      rY: r,
+      rZ: r,
+      haloWeight: 0.8 - s * 0.1,
+    });
   }
 
   return puffs;
 }
 
 /**
- * Evaluates the 3D surface position and lithophane wall thickness for the horizontal cloud bank.
- * Used by viewer.ts for realtime nighttime transmittance shader evaluation.
+ * Evaluates the cloud field thickness for Three.js viewer color shading.
  */
 export function evalHorizontalCloudField(
   u: number,
@@ -259,8 +223,8 @@ export function evalHorizontalCloudField(
   const tMax = params.cloudMaxThickness ?? 5.4;
   const rimLighting = (params.cloudRimLighting ?? 2.0) / 2.0;
 
-  const aCollar = width * 0.46; // 101.2 mm
-  const bCollar = depth * 0.46; // 39.1 mm
+  const aCollar = width * 0.46;
+  const bCollar = depth * 0.46;
   const hNominal = height * 0.74;
 
   const phi = Math.max(0, Math.min(Math.PI / 2, u * (Math.PI / 2)));
@@ -287,58 +251,37 @@ export function evalHorizontalCloudField(
     };
   }
 
-  let maxBulge = 0;
-  let sumBulge = 0;
-  let maxRimHalo = 0;
-  const bankBulges = [0, 0, 0, 0];
+  // Find nearest sphere and crevice proximity
+  let d1 = 999.0;
+  let d2 = 999.0;
+  let maxRimHalo = 0.0;
 
   for (const puff of puffs) {
-    const dx = (x0 - puff.x) / puff.rX;
-    const dy = (y0 - puff.y) / puff.rY;
-    const rawDz = z - puff.z;
-    const effectiveRz = rawDz < 0 ? puff.rZ * 1.35 : puff.rZ * 0.90;
-    const dz = rawDz / effectiveRz;
-    const distSq = dx * dx + dy * dy + dz * dz;
+    const dx = x0 - puff.x;
+    const dy = y0 - puff.y;
+    const dz = z - puff.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const dSphere = Math.abs(dist - puff.r);
 
-    if (distSq < 1.0) {
-      const d = Math.sqrt(distSq);
-      const dome = 0.5 * (1.0 + Math.cos(Math.PI * d));
-      const bulge = puff.amp * dome;
+    if (dSphere < d1) {
+      d2 = d1;
+      d1 = dSphere;
+    } else if (dSphere < d2) {
+      d2 = dSphere;
+    }
 
-      if (bulge > maxBulge) maxBulge = bulge;
-      sumBulge += bulge;
-
-      if (puff.bankId >= 0 && puff.bankId < 4) {
-        bankBulges[puff.bankId] += bulge;
-      }
-
+    const normDist = dist / puff.r;
+    if (normDist < 1.0) {
       const rimPeak = 0.76;
       const rimWidth = 0.18;
-      const halo = Math.exp(-Math.pow(d - rimPeak, 2.0) / (2.0 * rimWidth * rimWidth)) * (puff.haloWeight || 0.8);
+      const halo = Math.exp(-Math.pow(normDist - rimPeak, 2.0) / (2.0 * rimWidth * rimWidth)) * (puff.haloWeight || 0.8);
       if (halo > maxRimHalo) maxRimHalo = halo;
     }
   }
 
-  const compositeBulge = maxBulge + 0.18 * Math.max(0, sumBulge - maxBulge);
-
-  // Canyon valley seams between banks
-  let b1 = 0, b2 = 0;
-  for (let k = 0; k < bankBulges.length; k++) {
-    const val = bankBulges[k];
-    if (val > b1) { b2 = b1; b1 = val; }
-    else if (val > b2) { b2 = val; }
-  }
-  const interBankSeam = (b1 > 1.2 && b2 > 1.2) ? Math.min(1.0, (2.0 * b2) / (b1 + b2)) : 0.0;
-
-  const normBulge = Math.min(1.0, Math.max(0.0, compositeBulge / 16.0));
-  let localT = tMin + normBulge * (tMax - tMin);
-
-  if (interBankSeam > 0.02) {
-    localT -= interBankSeam * (tMax - tMin) * 0.45 * rimLighting;
-  }
-  if (maxRimHalo > 0.01) {
-    localT -= maxRimHalo * (tMax - tMin) * 0.16 * rimLighting;
-  }
+  // Crevice thinning between overlapping spheres
+  const crevice = Math.exp(-Math.pow(d2 - d1, 2.0) / (2.0 * 5.0 * 5.0));
+  let localT = tMax - crevice * (tMax - tMin) * 0.55 * rimLighting;
   localT = Math.max(tMin, Math.min(tMax, localT));
   const thickness = 2.0 + (localT - 2.0) * rimEase;
 
@@ -354,253 +297,77 @@ export function evalHorizontalCloudField(
 }
 
 /**
- * Builds the watertight 2-manifold organic horizontal cloud shade mesh.
- * - Parameterized along continuous ellipsoidal dome elevation (latitude phi) and azimuth (th)
- * - Zero stepping artifacts (C2 continuous cosine-bell dome profile)
- * - Zero flat shelves (continuous rounding to zenith apex)
- * - Full multi-scale cauliflower florets, fluid waves, and micro-granule tooth
- * - Lithophane walls (0.9mm to 5.4mm) with glowing inter-bank canyon corridors
+ * Builds the complete watertight 2-manifold hollow cloud shade in Manifold.
+ * - Every puff is a true 3D mathematical isotropic sphere (rX = rY = rZ = r)
+ * - Unions outer spheres
+ * - Unions inner lithophane cavity spheres + central mandrel track clearance
+ * - Adds 4.5mm base pocket skirt fitting flush into desktop plinth
+ * - Warps outer surface with multi-scale cauliflower noise
  */
-function buildMasterDomeCloudMesh(
-  params: LampParameters,
-  puffs: HorizontalCloudPuff[],
-  noise: (x: number, y: number, z: number) => number,
-  nLat = 100,
-  nLon = 160
-): MeshData {
-  const width = params.horizonWidth ?? 220;
-  const depth = params.horizonDepth ?? 85;
-  const height = params.horizonHeight ?? 105;
-  const floretScale = params.cloudFloretScale ?? 2.6;
-  const microTooth = params.cloudTurbulence ?? 0.38;
-  const tMin = params.cloudMinThickness ?? 0.9;
-  const tMax = params.cloudMaxThickness ?? 5.4;
-  const rimLighting = (params.cloudRimLighting ?? 2.0) / 2.0;
+function buildCompleteCloudShadeManifold(wasm: any, params: LampParameters, puffs: HorizontalCloudPuff[]): MeshData {
+  const seed = params.organicSeed ?? 77;
+  const wallThickness = (params.cloudMinThickness ?? 0.9) + 1.3; // ~2.2mm nominal lithophane thickness
 
-  const aCollar = width * 0.46; // 101.2 mm
-  const bCollar = depth * 0.46; // 39.1 mm
-  const hNominal = height * 0.74;
+  const outerObjs: any[] = [];
+  const innerObjs: any[] = [];
 
-  const verts: number[] = [];
-  const tris: number[] = [];
+  for (const s of puffs) {
+    const segs = s.r > 22 ? 52 : 36;
+    const sphOuter = wasm.Manifold.sphere(s.r, segs).translate([s.x, s.y, s.z]);
+    outerObjs.push(sphOuter);
 
-  for (let lat = 0; lat <= nLat; lat++) {
-    const v = lat / nLat; // 0 to 1
-    // Latitude angle phi: 0 at base collar, PI/2 at zenith apex
-    const phi = v * (Math.PI / 2);
-    const cosPhi = Math.cos(phi);
-    const sinPhi = Math.sin(phi);
+    const rIn = s.r - wallThickness;
+    if (rIn > 3.0) {
+      const sphInner = wasm.Manifold.sphere(rIn, Math.max(20, segs - 16)).translate([s.x, s.y, s.z]);
+      innerObjs.push(sphInner);
+    }
+  }
 
-    const zBase = hNominal * sinPhi;
-    // Collar transition ease: bottom 4.5mm is vertical skirt fitting flush in plinth pocket
-    const rimEase = Math.min(1.0, Math.max(0.0, (zBase - 3.5) / 10.0));
+  // 4.5mm base pocket skirt fitting inside the plinth pocket
+  const baseSkirtOuter = wasm.Manifold.cylinder(4.5, 98, 98, 64)
+    .scale([1.0, 36.0 / 98.0, 1.0])
+    .translate([0, 0, 0]);
+  outerObjs.push(baseSkirtOuter);
 
-    for (let lon = 0; lon < nLon; lon++) {
-      const th = (lon / nLon) * 2 * Math.PI;
-      const cosTh = Math.cos(th);
-      const sinTh = Math.sin(th);
+  const outerSolid = wasm.Manifold.union(outerObjs);
+  const innerSolid = wasm.Manifold.union(innerObjs);
 
-      // Base unperturbed dome coordinate:
-      const x0 = aCollar * cosPhi * cosTh;
-      const y0 = bCollar * cosPhi * sinTh;
-      const z0 = zBase;
+  // Mandrel cavity clearing the central LED reflector track
+  const mandrelPocket = wasm.Manifold.cylinder(75, 85, 85, 48)
+    .scale([1.0, 16.0 / 85.0, 1.0])
+    .translate([0, 0, 0]);
 
-      // Surface normal of base ellipsoid:
-      let nx = (x0 / (aCollar * aCollar));
-      let ny = (y0 / (bCollar * bCollar));
-      let nz = (z0 / (hNominal * hNominal + 0.001));
-      const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
-      if (nLen > 0.0001) {
-        nx /= nLen; ny /= nLen; nz /= nLen;
-      } else {
-        nx = 0; ny = 0; nz = 1;
-      }
+  const fullInnerCavity = wasm.Manifold.union([innerSolid, mandrelPocket]);
 
-      // Smooth Domain Warping (Wind drift, wavelength ~50mm)
-      const warpScale = 0.018;
-      const wX = noise(x0 * warpScale + 12.3, y0 * warpScale + 34.5, z0 * warpScale) * 3.8;
-      const wY = noise(x0 * warpScale + 45.6, y0 * warpScale + 78.9, z0 * warpScale) * 2.8;
-      const wZ = noise(x0 * warpScale + 78.1, y0 * warpScale + 12.4, z0 * warpScale) * 2.8;
+  let hollowCloud = outerSolid.subtract(fullInnerCavity);
 
-      const px = x0 + wX;
-      const py = y0 + wY;
-      const pz = z0 + wZ;
-
-      // 3D Hierarchical Cosine-Bell Puff Evaluation with Anisotropic Convection Draft
-      let maxBulge = 0;
-      let sumBulge = 0;
-      let maxRimHalo = 0;
-      const bankBulges = [0, 0, 0, 0];
-
-      for (const puff of puffs) {
-        const dx = (px - puff.x) / puff.rX;
-        const dy = (py - puff.y) / puff.rY;
-        const rawDz = pz - puff.z;
-        // Anisotropic Convection Draft:
-        // Flatter condensation base below (effectiveRz * 1.35), towering billowing dome above (effectiveRz * 0.90)
-        // 100% support-free FDM overhang draft (<= 36 deg from vertical)
-        const effectiveRz = rawDz < 0 ? puff.rZ * 1.35 : puff.rZ * 0.90;
-        const dz = rawDz / effectiveRz;
-        const distSq = dx * dx + dy * dy + dz * dz;
-
-        if (distSq < 1.0) {
-          const d = Math.sqrt(distSq);
-          // C2 Cosine-bell dome profile: zero slope at crest, zero slope at boundary
-          const dome = 0.5 * (1.0 + Math.cos(Math.PI * d));
-          const bulge = puff.amp * dome;
-
-          if (bulge > maxBulge) maxBulge = bulge;
-          sumBulge += bulge;
-
-          if (puff.bankId >= 0 && puff.bankId < 4) {
-            bankBulges[puff.bankId] += bulge;
-          }
-
-          // Luminous rim halo outlining billow curves
-          const rimPeak = 0.76;
-          const rimWidth = 0.18;
-          const halo = Math.exp(-Math.pow(d - rimPeak, 2.0) / (2.0 * rimWidth * rimWidth)) * (puff.haloWeight || 0.8);
-          if (halo > maxRimHalo) maxRimHalo = halo;
-        }
-      }
-
-      // Smooth-max blend: filleted valleys preserving individual rounded sphere crests
-      const compositeBulge = maxBulge + 0.18 * Math.max(0, sumBulge - maxBulge);
-
-      // Fluid Wave Harmonics (wavelength 20-35mm)
+  // Multi-scale cauliflower floret micro-tooth warp
+  const noise = createNoise3D(seed);
+  hollowCloud = hollowCloud.warp((vert: any) => {
+    const x = vert[0], y = vert[1], z = vert[2];
+    if (z > 4.5) {
+      const ease = Math.min(1.0, (z - 4.5) / 8.0);
       const flowScale = 0.035;
-      const fluidWave = (
-        noise(x0 * flowScale + 12.3, y0 * flowScale + 55.7, z0 * flowScale + 31.9) * 1.5 +
-        noise(x0 * flowScale * 1.8 + 77.1, y0 * flowScale * 1.8 + 18.4, z0 * flowScale * 1.8) * 0.75
-      );
+      const n = (
+        noise(x * flowScale + 12.3, y * flowScale + 55.7, z * flowScale + 31.9) * 1.3 +
+        noise(x * 0.10 + 42.1, y * 0.10 + 88.3, z * 0.10 + 17.5) * 0.75 +
+        noise(x * 0.25 + 61.3, y * 0.25 + 19.8, z * 0.25 + 84.2) * 0.38
+      ) * ease;
 
-      // Level 2 Intermediate Broccoli Florets (~7-10mm wavelength)
-      const floretWave = floretScale > 0.1 ? (
-        noise(x0 * 0.10 + 42.1, y0 * 0.10 + 88.3, z0 * 0.10 + 17.5) * (floretScale * 0.60) +
-        noise(x0 * 0.16 + 14.7, y0 * 0.16 + 33.2, z0 * 0.16 + 91.1) * (floretScale * 0.30)
-      ) : 0;
-
-      // Level 3 Physical Micro-Granule Floret Tooth (~3.5-5.5mm wavelength)
-      const microWave = microTooth > 0.05 ? (
-        noise(x0 * 0.26 + 61.3, y0 * 0.26 + 19.8, z0 * 0.26 + 84.2) * (microTooth * 0.95) +
-        noise(x0 * 0.40 + 12.7, y0 * 0.40 + 93.1, z0 * 0.40 + 47.6) * (microTooth * 0.55)
-      ) : 0;
-
-      const totalDisplacement = (compositeBulge + fluidWave + floretWave + microWave) * rimEase;
-
-      // Outer surface position
-      const xOuter = x0 + nx * totalDisplacement;
-      const yOuter = y0 + ny * totalDisplacement;
-      const zOuter = Math.max(0, z0 + nz * totalDisplacement);
-
-      // Master Cloud Shading - "Lost & Found" Canyon Seams
-      let b1 = 0, b2 = 0;
-      for (let k = 0; k < bankBulges.length; k++) {
-        const val = bankBulges[k];
-        if (val > b1) { b2 = b1; b1 = val; }
-        else if (val > b2) { b2 = val; }
+      const len = Math.sqrt(x * x + y * y + (z - 20) * (z - 20));
+      if (len > 0.001) {
+        vert[0] += (x / len) * n;
+        vert[1] += (y / len) * n;
+        vert[2] += ((z - 20) / len) * n;
       }
-      const interBankSeam = (b1 > 1.2 && b2 > 1.2) ? Math.min(1.0, (2.0 * b2) / (b1 + b2)) : 0.0;
-
-      // Lithophane thickness:
-      // Crests: thicker (milky white diffuse cloud mass)
-      // Valleys & Seams: thinner (0.9mm radiant glowing light corridors!)
-      const normBulge = Math.min(1.0, Math.max(0.0, compositeBulge / 16.0));
-      let localT = tMin + normBulge * (tMax - tMin);
-
-      // Thin the canyons between major cloud formations for brilliant light diffusion
-      if (interBankSeam > 0.02) {
-        localT -= interBankSeam * (tMax - tMin) * 0.45 * rimLighting;
-      }
-      if (maxRimHalo > 0.01) {
-        localT -= maxRimHalo * (tMax - tMin) * 0.16 * rimLighting;
-      }
-      localT = Math.max(tMin, Math.min(tMax, localT));
-      const thickness = 2.0 + (localT - 2.0) * rimEase;
-
-      // Inner surface position
-      const inDisplacement = totalDisplacement - thickness;
-      const xInner = x0 + nx * inDisplacement;
-      const yInner = y0 + ny * inDisplacement;
-      const zInner = Math.max(0, z0 + nz * inDisplacement);
-
-      verts.push(xOuter, yOuter, zOuter);
-      verts.push(xInner, yInner, zInner);
     }
-  }
+  });
 
-  // Triangulate grid quads
-  for (let lat = 0; lat < nLat; lat++) {
-    const r0 = lat * nLon * 2;
-    const r1 = (lat + 1) * nLon * 2;
-
-    for (let lon = 0; lon < nLon; lon++) {
-      const next = (lon + 1) % nLon;
-
-      // Outer wall quad (outward CCW)
-      const out_a = r0 + 2 * lon;
-      const out_b = r0 + 2 * next;
-      const out_c = r1 + 2 * next;
-      const out_d = r1 + 2 * lon;
-      tris.push(out_a, out_b, out_c);
-      tris.push(out_a, out_c, out_d);
-
-      // Inner wall quad (inward CCW)
-      const in_a = r0 + 2 * lon + 1;
-      const in_b = r0 + 2 * next + 1;
-      const in_c = r1 + 2 * next + 1;
-      const in_d = r1 + 2 * lon + 1;
-      tris.push(in_a, in_c, in_b);
-      tris.push(in_a, in_d, in_c);
-    }
-  }
-
-  // Base rim closure at lat = 0 (Z = 0)
-  for (let lon = 0; lon < nLon; lon++) {
-    const next = (lon + 1) % nLon;
-    const out_curr = 2 * lon;
-    const out_next = 2 * next;
-    const in_curr = 2 * lon + 1;
-    const in_next = 2 * next + 1;
-    tris.push(out_curr, in_curr, in_next);
-    tris.push(out_curr, in_next, out_next);
-  }
-
-  // Zenith Apex Closure at lat = nLat:
-  const topStart = nLat * nLon * 2;
-  let avgOutX = 0, avgOutY = 0, avgOutZ = 0;
-  let avgInX = 0, avgInY = 0, avgInZ = 0;
-  for (let lon = 0; lon < nLon; lon++) {
-    avgOutX += verts[(topStart + 2 * lon) * 3];
-    avgOutY += verts[(topStart + 2 * lon) * 3 + 1];
-    avgOutZ += verts[(topStart + 2 * lon) * 3 + 2];
-    avgInX += verts[(topStart + 2 * lon + 1) * 3];
-    avgInY += verts[(topStart + 2 * lon + 1) * 3 + 1];
-    avgInZ += verts[(topStart + 2 * lon + 1) * 3 + 2];
-  }
-  avgOutX /= nLon; avgOutY /= nLon; avgOutZ /= nLon;
-  avgInX /= nLon; avgInY /= nLon; avgInZ /= nLon;
-
-  const apexOutIdx = verts.length / 3;
-  verts.push(avgOutX, avgOutY, avgOutZ);
-  const apexInIdx = apexOutIdx + 1;
-  verts.push(avgInX, avgInY, avgInZ);
-
-  for (let lon = 0; lon < nLon; lon++) {
-    const next = (lon + 1) % nLon;
-    const out_curr = topStart + 2 * lon;
-    const out_next = topStart + 2 * next;
-    const in_curr = topStart + 2 * lon + 1;
-    const in_next = topStart + 2 * next + 1;
-
-    tris.push(out_curr, out_next, apexOutIdx);
-    tris.push(in_curr, apexInIdx, in_next);
-  }
-
+  const mesh = hollowCloud.getMesh();
   return {
-    vertProperties: new Float32Array(verts),
-    triVerts: new Uint32Array(tris),
-    numProp: 3,
+    vertProperties: mesh.vertProperties,
+    triVerts: mesh.triVerts,
+    numProp: mesh.numProp ?? 3,
   };
 }
 
@@ -638,43 +405,44 @@ function buildHorizontalBaseAndReflector(wasm: any, params: LampParameters) {
     plinthBase = plinthBase.add(cornerCyl.translate(pos));
   }
 
-  // Translate plinth so its top surface rests at Z = 0
+  // Lift plinth so top surface sits at Z = 0
   plinthBase = plinthBase.translate([0, 0, -plinthH / 2]);
 
-  // Seating pocket: Ellipse matching base collar with +0.8mm clearance, 4.5mm deep
-  const pocketA = aCollar + 0.8;
-  const pocketB = bCollar + 0.8;
+  // Recessed seating collar pocket (depth: 4.5mm)
   const pocketCyl = wasm.Manifold.cylinder(6.0, 1.0, 1.0, 64, true)
-    .scale([pocketA, pocketB, 1.0])
-    .translate([0, 0, 0.0]);
+    .scale([aCollar + 0.35, bCollar + 0.35, 1.0])
+    .translate([0, 0, -2.25]);
+
   plinthBase = plinthBase.subtract(pocketCyl);
 
-  // Central light aperture
+  // Central light well aperture: lets uplight bounce into cloud canopy
   const lightAperture = wasm.Manifold.cube([width - 40.0, 28.0, 16.0], true)
-    .translate([0, 0, -8.0]);
+    .translate([0, 0, -7.0]);
   plinthBase = plinthBase.subtract(lightAperture);
 
-  // Internal ESP32-C6 electronics bay at rear (-Y)
-  const espBay = wasm.Manifold.cube([52.0, 26.0, 14.0], true)
-    .translate([0, -plinthD / 2 + 22.0, -plinthH / 2]);
+  // ESP32 Electronics Pocket in base plinth underside
+  const pcbLength = 52.0;
+  const pcbWidth = 22.0;
+  const espBay = wasm.Manifold.cube([pcbLength + 4.0, pcbWidth + 4.0, 14.0], true)
+    .translate([0, 0, -plinthH + 7.0]);
   plinthBase = plinthBase.subtract(espBay);
 
-  // Rear flush USB-C port
+  // USB-C Portal on rear wall of plinth
   const usbCutout = wasm.Manifold.cube([12.5, 24.0, 6.5], true)
-    .translate([0, -plinthD / 2 + 6.0, -plinthH / 2]);
+    .translate([0, -plinthD / 2 + 10.0, -plinthH + 7.0]);
   plinthBase = plinthBase.subtract(usbCutout);
 
-  // 2. Horizontal LED Reflector Mandrel (`veins`)
-  const trackW = width - 44.0;
-  const trackD = 24.0;
-  const trackH = 12.0;
+  // 2. Linear LED Reflector Mandrel (`veins`)
+  const trackW = width - 48.0;
+  const trackD = 22.0;
+  const trackH = 14.0;
 
   let reflectorTrack = wasm.Manifold.cube([trackW, trackD, trackH], true)
-    .translate([0, 0, -2.0 - trackH / 2]);
+    .translate([0, 0, trackH / 2]);
 
-  // Recessed straight LED strip bed (10.6mm wide, 2.5mm deep)
+  // LED Strip channel: 10.6mm wide, 2.5mm deep
   const stripBed = wasm.Manifold.cube([trackW - 6.0, 10.6, 2.5], true)
-    .translate([0, 0, -2.0 - 1.25]);
+    .translate([0, 0, trackH - 1.25]);
   reflectorTrack = reflectorTrack.subtract(stripBed);
 
   return {
@@ -695,12 +463,8 @@ export function generateHorizontalCloudLampGeometry(wasm: any, params: LampParam
   const floretScale = params.cloudFloretScale ?? 2.6;
 
   const puffs = generateHorizontalCloudPuffs(seed, width, depth, height, puffDepth, floretScale);
-  const noise = createNoise3D(seed);
 
-  const nLat = 100;
-  const nLon = 160;
-
-  const cloudMesh = buildMasterDomeCloudMesh(params, puffs, noise, nLat, nLon);
+  const cloudMesh = buildCompleteCloudShadeManifold(wasm, params, puffs);
 
   const { plinth, reflector } = buildHorizontalBaseAndReflector(wasm, params);
   const plinthMesh = plinth.getMesh();
