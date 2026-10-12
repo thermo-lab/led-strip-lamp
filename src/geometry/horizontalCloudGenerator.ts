@@ -47,130 +47,196 @@ export function generateHorizontalCloudPuffs(
 
   const puffs: HorizontalCloudPuff[] = [];
 
-  // Tower slots along X: jittered procedurally by seed
-  const towerSlots = [
-    -0.31 + (rand() - 0.5) * 0.05,
-    -0.08 + (rand() - 0.5) * 0.06,
-     0.15 + (rand() - 0.5) * 0.06,
-     0.34 + (rand() - 0.5) * 0.05,
-  ];
+  // Tutorial Guide Sphere Cluster (inspired by Clip Studio cloud guide):
+  // 1. Lower Baseline Chain (5 overlapping spheres spanning the width)
+  const baseSlots = [-0.34, -0.18, 0.02, 0.20, 0.36];
+  baseSlots.forEach((slot, i) => {
+    const x = slot * width + (rand() - 0.5) * 8.0;
+    const yFront = (0.28 + rand() * 0.05) * depth;
+    const z = height * (0.16 + rand() * 0.04);
+    const rX = 22.0 + rand() * 3.0;
+    const rY = (18.0 + rand() * 3.0) * ampScale;
+    const rZ = 16.0 + rand() * 2.5;
+    const amp = (15.0 + rand() * 3.0) * ampScale;
 
-  // Pick summit tower (1 or 2)
-  const summitIdx = rand() > 0.5 ? 1 : 2;
-
-  towerSlots.forEach((slot, bankId) => {
-    const isSummit = bankId === summitIdx;
-    const xCenter = slot * width;
-    const topZ = isSummit ? height * 0.98 : height * (0.64 + rand() * 0.20);
-    const rX = width * (0.16 + rand() * 0.03);
-    const rY = depth * (0.38 + rand() * 0.05);
-
-    // 1. Mother Bank Summit Mound
-    puffs.push({
-      level: 0,
-      bankId,
-      x: xCenter,
-      y: 0,
-      z: topZ * 0.88,
-      rX: rX * 0.90,
-      rY: rY * 0.90,
-      rZ: topZ * 0.35,
-      amp: (16.0 + rand() * 3.5) * ampScale,
-      haloWeight: 1.0,
-    });
-
-    // 2. Mid Mother Body
-    puffs.push({
-      level: 0,
-      bankId,
-      x: xCenter + (rand() - 0.5) * 6.0,
-      y: (rand() - 0.5) * 4.0,
-      z: topZ * 0.50,
-      rX: rX * 1.05,
-      rY: rY * 1.05,
-      rZ: topZ * 0.45,
-      amp: (18.0 + rand() * 3.0) * ampScale,
-      haloWeight: 1.0,
-    });
-
-    // 3. Lower condensation billow rolling near the base (+Y)
+    // Front baseline puff
     puffs.push({
       level: 1,
-      bankId,
-      x: xCenter + (rand() - 0.5) * 8.0,
-      y: (0.32 + rand() * 0.05) * depth,
-      z: height * (0.15 + rand() * 0.04),
-      rX: 22.0 + rand() * 3.0,
-      rY: (18.0 + rand() * 3.0) * ampScale,
-      rZ: 15.0 + rand() * 2.5,
-      amp: (14.5 + rand() * 3.0) * ampScale,
-      haloWeight: 0.90,
+      bankId: i % 4,
+      x,
+      y: yFront,
+      z,
+      rX,
+      rY,
+      rZ,
+      amp,
+      haloWeight: 0.9,
     });
 
-    // 4. Convective Father Lobes on Front Face (+Y)
-    const nFront = isSummit ? 3 : 2;
-    for (let j = 0; j < nFront; j++) {
-      const zFrac = 0.32 + (j / (nFront - 0.2)) * 0.48;
-      const lobeZ = topZ * zFrac;
-      const lobeY = (0.32 + rand() * 0.06) * depth;
-      const lobeX = xCenter + (rand() - 0.5) * 16.0;
-      const lobeAmp = (14.0 + rand() * 4.0) * ampScale;
-      const lobeRx = 22.0 + rand() * 4.0;
-      const lobeRy = (19.0 + rand() * 4.0) * ampScale;
-      const lobeRz = 18.0 + rand() * 3.0;
-
-      puffs.push({
-        level: 1,
-        bankId,
-        x: lobeX,
-        y: lobeY,
-        z: lobeZ,
-        rX: lobeRx,
-        rY: lobeRy,
-        rZ: lobeRz,
-        amp: lobeAmp,
-        haloWeight: 0.85,
-      });
-
-      // 5. Nested Child Florets around each front lobe
-      if (floretScale > 0.1) {
-        for (let k = 0; k < 2; k++) {
-          const angle = k * Math.PI + (rand() - 0.5) * 1.2;
-          const fDist = 0.55 + rand() * 0.30;
-          const fx = lobeX + Math.cos(angle) * (lobeRx * fDist * 0.8);
-          const fz = lobeZ + Math.sin(angle) * (lobeRz * fDist * 0.8);
-          const fy = lobeY + (rand() - 0.5) * 4.0;
-
-          puffs.push({
-            level: 2,
-            bankId,
-            x: fx,
-            y: fy,
-            z: Math.max(12.0, Math.min(height * 0.94, fz)),
-            rX: 11.0 + rand() * 3.0,
-            rY: 10.0 + rand() * 3.0,
-            rZ: 9.5 + rand() * 2.5,
-            amp: (floretScale / 2.4) * (2.8 + rand() * 1.8),
-            haloWeight: 0.70,
-          });
-        }
-      }
-    }
-
-    // 6. Rear Roll Billows (-Y)
+    // Rear baseline puff
     puffs.push({
       level: 1,
-      bankId,
-      x: xCenter + (rand() - 0.5) * 12.0,
-      y: -(0.28 + rand() * 0.05) * depth,
-      z: topZ * 0.45,
-      rX: 22.0 + rand() * 4.0,
-      rY: (17.0 + rand() * 3.0) * ampScale,
-      rZ: 18.0 + rand() * 3.0,
-      amp: (12.0 + rand() * 3.0) * ampScale,
-      haloWeight: 0.80,
+      bankId: i % 4,
+      x,
+      y: -yFront,
+      z,
+      rX,
+      rY,
+      rZ,
+      amp: amp * 0.9,
+      haloWeight: 0.8,
     });
   });
+
+  // 2. Mid-Tier Bulging Spheres (Foreground billows that pop forward toward viewer)
+  const midSlots = [-0.26, -0.08, 0.12, 0.28];
+  midSlots.forEach((slot, i) => {
+    const x = slot * width + (rand() - 0.5) * 10.0;
+    const yFront = (0.33 + rand() * 0.06) * depth;
+    const z = height * (0.38 + rand() * 0.08);
+    const rX = 24.0 + rand() * 4.0;
+    const rY = (21.0 + rand() * 4.0) * ampScale;
+    const rZ = 20.0 + rand() * 3.0;
+    const amp = (17.0 + rand() * 3.5) * ampScale;
+
+    puffs.push({
+      level: 1,
+      bankId: i % 4,
+      x,
+      y: yFront,
+      z,
+      rX,
+      rY,
+      rZ,
+      amp,
+      haloWeight: 0.95,
+    });
+
+    puffs.push({
+      level: 1,
+      bankId: i % 4,
+      x,
+      y: -yFront,
+      z,
+      rX,
+      rY,
+      rZ,
+      amp: amp * 0.9,
+      haloWeight: 0.85,
+    });
+  });
+
+  // 3. High-Crest Skyline Spheres (Top rounded domes forming the cumulus skyline)
+  const summitChoice = rand() > 0.5 ? 1 : 2;
+  const crestSlots = [
+    { slot: -0.30 + (rand() - 0.5) * 0.04, zRatio: 0.65 + rand() * 0.08, rX: 28, rY: 26, rZ: 24, id: 0 },
+    { slot: -0.07 + (rand() - 0.5) * 0.05, zRatio: summitChoice === 1 ? 0.98 : 0.86, rX: 35, rY: 30, rZ: 30, id: 1 },
+    { slot:  0.16 + (rand() - 0.5) * 0.05, zRatio: summitChoice === 2 ? 0.98 : 0.84, rX: 33, rY: 28, rZ: 28, id: 2 },
+    { slot:  0.34 + (rand() - 0.5) * 0.04, zRatio: 0.60 + rand() * 0.08, rX: 26, rY: 24, rZ: 22, id: 3 },
+  ];
+
+  crestSlots.forEach((c) => {
+    const x = c.slot * width;
+    const z = height * c.zRatio;
+    const rX = c.rX * (width / 220);
+    const rY = c.rY * (depth / 85);
+    const rZ = c.rZ * (height / 105);
+    const amp = (18.0 + rand() * 4.0) * ampScale;
+
+    puffs.push({
+      level: 0,
+      bankId: c.id,
+      x,
+      y: 0,
+      z: z * 0.88,
+      rX,
+      rY,
+      rZ: rZ * 0.8,
+      amp,
+      haloWeight: 1.0,
+    });
+
+    // Peak dome
+    puffs.push({
+      level: 0,
+      bankId: c.id,
+      x: x + (rand() - 0.5) * 6.0,
+      y: (rand() - 0.5) * 4.0,
+      z: z,
+      rX: rX * 0.75,
+      rY: rY * 0.75,
+      rZ: rZ * 0.60,
+      amp: (16.0 + rand() * 3.0) * ampScale,
+      haloWeight: 1.0,
+    });
+
+    // Companion cauliflower sub-lobes clustered on crest slopes
+    for (let k = 0; k < 2; k++) {
+      const angle = (k === 0 ? -0.42 : 0.42) * Math.PI;
+      puffs.push({
+        level: 1,
+        bankId: c.id,
+        x: x + Math.sin(angle) * (rX * 0.50),
+        y: (0.12 + rand() * 0.08) * depth,
+        z: z * 0.82 + (rand() - 0.5) * 6.0,
+        rX: rX * 0.55,
+        rY: (16.0 + rand() * 3.0) * ampScale,
+        rZ: rZ * 0.52,
+        amp: (12.5 + rand() * 2.5) * ampScale,
+        haloWeight: 0.85,
+      });
+    }
+  });
+
+  // 4. Trailing Satellite Florets on Flanks (As shown in Clip Studio guide)
+  puffs.push({
+    level: 2,
+    bankId: 3,
+    x: 0.42 * width,
+    y: (0.16 + rand() * 0.05) * depth,
+    z: height * 0.32,
+    rX: 15.0,
+    rY: 13.0 * ampScale,
+    rZ: 13.0,
+    amp: 9.0 * ampScale,
+    haloWeight: 0.8,
+  });
+
+  puffs.push({
+    level: 2,
+    bankId: 3,
+    x: 0.46 * width,
+    y: (0.08 + rand() * 0.04) * depth,
+    z: height * 0.22,
+    rX: 11.0,
+    rY: 9.0 * ampScale,
+    rZ: 9.0,
+    amp: 7.0 * ampScale,
+    haloWeight: 0.75,
+  });
+
+  // 5. Nested Broccoli Florets around mid-tier crevices
+  if (floretScale > 0.1) {
+    for (let k = 0; k < 8; k++) {
+      const u = 0.25 + (k / 7) * 0.55;
+      const slotX = (-0.32 + (k / 7) * 0.64) * width + (rand() - 0.5) * 10.0;
+      const y = (0.28 + rand() * 0.06) * depth;
+      const z = height * u;
+
+      puffs.push({
+        level: 2,
+        bankId: k % 4,
+        x: slotX,
+        y,
+        z,
+        rX: 12.0 + rand() * 3.0,
+        rY: 11.0 + rand() * 3.0,
+        rZ: 10.0 + rand() * 2.5,
+        amp: (floretScale / 2.4) * (3.0 + rand() * 1.8),
+        haloWeight: 0.70,
+      });
+    }
+  }
 
   return puffs;
 }
@@ -253,7 +319,7 @@ export function evalHorizontalCloudField(
     }
   }
 
-  const compositeBulge = maxBulge + 0.24 * Math.max(0, sumBulge - maxBulge);
+  const compositeBulge = maxBulge + 0.18 * Math.max(0, sumBulge - maxBulge);
 
   // Canyon valley seams between banks
   let b1 = 0, b2 = 0;
@@ -398,8 +464,8 @@ function buildMasterDomeCloudMesh(
         }
       }
 
-      // Smooth-max blend: filleted valleys with continuous curvature
-      const compositeBulge = maxBulge + 0.24 * Math.max(0, sumBulge - maxBulge);
+      // Smooth-max blend: filleted valleys preserving individual rounded sphere crests
+      const compositeBulge = maxBulge + 0.18 * Math.max(0, sumBulge - maxBulge);
 
       // Fluid Wave Harmonics (wavelength 20-35mm)
       const flowScale = 0.035;
